@@ -74,7 +74,9 @@ try {
         'parent_doc_id' => "INTEGER",
         'ph' => "TEXT",
         'tds' => "TEXT",
-        'kekeruhan' => "TEXT"
+        'kekeruhan' => "TEXT",
+        'file_path' => "TEXT",
+        'external_link' => "TEXT"
     ];
 
     foreach ($new_cols as $col => $type) {
@@ -97,48 +99,68 @@ try {
         $pdo->exec("INSERT INTO inspectors (nama_inspector) VALUES ('Budi Santoso'), ('Agus Setiawan'), ('Indah Permata')");
     }
 
-    // SEEDING DATA PROFESIONAL: 1 Siklus Lengkap (6 Dokumen) + Variasi
-    // Hanya jalan jika database benar-benar kosong untuk efisiensi
+    // SEEDING DATA PROFESIONAL: 3 Siklus Lengkap & Realistis
     $countDocs = $pdo->query("SELECT COUNT(*) FROM documents")->fetchColumn();
     
     if ($countDocs == 0) {
         $today = date('Y-m-d');
         $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $twoDaysAgo = date('Y-m-d', strtotime('-2 days'));
         $ym = date('ym');
 
-        // --- SIKLUS 1: BATCH A-101 (BOTOL 600ML - MASALAH KUALITAS AIR) ---
-        // 1. Catatan Batch
+        // --- SIKLUS A: KASUS MUTU AIR (BACKWASH FILTER) ---
+        // 01. Sampling
         $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, folder_path) 
-            VALUES ('QC-BTCH-$ym-001', 'Log Produksi Batch A-101', 'Botol_600ml', 'Catatan_Batch', '$yesterday', 'Budi Santoso', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Botol_600ml/2026/April')");
-        $id1 = $pdo->lastInsertId();
+            VALUES ('QC-BTCH-$ym-001', 'Log Sampling Produksi Batch B-202', 'Botol_600ml', 'Catatan_Batch', '$twoDaysAgo', 'Budi Santoso', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Botol_600ml/2026/April')");
+        $idA1 = $pdo->lastInsertId();
 
-        // 2. Laporan Hasil Ujian (REJECT)
-        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, ph, tds, kekeruhan, deskripsi, folder_path) 
-            VALUES ('QC-LABS-$ym-001', 'Laporan Uji Fisika-Kimia A-101', 'Botol_600ml', 'Uji_Lab', '$yesterday', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Reject', $id1, '7.2', '115', '2.8', '<p>Tingkat kekeruhan (Turbidity) melebihi standar SNI (> 1.5 NTU). Produksi dihentikan sementara.</p>', 'QC_AMDK/Botol_600ml/2026/April')");
-        $id2 = $pdo->lastInsertId();
+        // 02. Uji Lab (REJECT)
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, ph, tds, kekeruhan, deskripsi, folder_path, external_link) 
+            VALUES ('QC-LABS-$ym-001', 'Laporan Analisis Kimia Fisika B-202', 'Botol_600ml', 'Uji_Lab', '$twoDaysAgo', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Reject', $idA1, '7.4', '145', '3.1', '<strong>Hasil Uji:</strong> Parameter kekeruhan (Turbidity) melebihi ambang batas SNI 01-3553. Partikel padat terlihat secara visual.', 'QC_AMDK/Botol_600ml/2026/April', 'https://docs.google.com/viewer?url=example_lab_report_b202.pdf')");
+        $idA2 = $pdo->lastInsertId();
 
-        // 3. Dokumen Diagnosis
+        // 03. Diagnosis
         $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, deskripsi, folder_path) 
-            VALUES ('QC-DIAG-$ym-001', 'Investigasi Kualitas Air (Filter Keramik)', '-', 'Diagnosis_Mesin', '$today', 'Indah Permata', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $id2, '<p>Analisis menunjukkan adanya akumulasi partikel pada filter keramik nomor 3 dan 5. Diperlukan pencucian tabung filter (Backwash).</p>', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
-        $id3 = $pdo->lastInsertId();
+            VALUES ('QC-DIAG-$ym-001', 'Investigasi Masalah Mutu (Filter Karbon)', '-', 'Diagnosis_Mesin', '$yesterday', 'Indah Permata', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $idA2, '<strong>Diagnosis:</strong> Filter karbon aktif pada tabung primer sudah jenuh. Ditemukan endapan lumpur halus pada nozzle inlet.', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
+        $idA3 = $pdo->lastInsertId();
 
-        // 4. Laporan Perbaikan
+        // 04. Perbaikan
         $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, deskripsi, folder_path) 
-            VALUES ('QC-REPR-$ym-001', 'Tindakan Koreksi: Backwash & Sterilisasi', '-', 'Laporan_Perbaikan', '$today', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $id3, '<p>Telah dilakukan pembilasan balik (Backwashing) selama 45 menit. Pipa inlet telah disterilisasi menggunakan larutan pembersih standar.</p>', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
-        $id4 = $pdo->lastInsertId();
+            VALUES ('QC-REPR-$ym-001', 'Laporan Tindakan: Backwash & Sanitasi Nozzle', '-', 'Laporan_Perbaikan', '$yesterday', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $idA3, '<strong>Tindakan:</strong> Dilakukan pembilasan balik (Backwash) selama 60 menit. Pembersihan manual pada nozzle inlet dan sterilisasi tangki penampung.', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
+        $idA4 = $pdo->lastInsertId();
 
-        // 5. Laporan Uji Ulang
+        // 05. Uji Ulang
         $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, ph, tds, kekeruhan, deskripsi, folder_path) 
-            VALUES ('QC-RETS-$ym-001', 'Uji Verifikasi Pasca-Koreksi A-101', 'Botol_600ml', 'Uji_Ulang', '$today', 'Budi Santoso', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $id4, '7.0', '78', '0.15', '<p>Parameter kekeruhan kembali normal (0.15 NTU). Kelayakan air dinyatakan aman.</p>', 'QC_AMDK/Botol_600ml/2026/April')");
-        $id5 = $pdo->lastInsertId();
+            VALUES ('QC-RETS-$ym-001', 'Verifikasi Uji Ulang Pasca Sanitasi B-202', 'Botol_600ml', 'Uji_Ulang', '$today', 'Budi Santoso', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $idA4, '7.1', '85', '0.12', '<strong>Verifikasi:</strong> Kualitas air kembali jernih dan sesuai standar mutu internal perusahaan.', 'QC_AMDK/Botol_600ml/2026/April')");
+        $idA5 = $pdo->lastInsertId();
 
-        // 6. Approval Manager
+        // 06. Approval
         $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, folder_path, approval_status, approved_by, deskripsi) 
-            VALUES ('QC-APPR-$ym-001', 'Otorisasi Rilis Produksi Batch A-101', 'Botol_600ml', 'Approval_Manager', '$today', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $id5, 'QC_AMDK/Botol_600ml/2026/April', 'Approved', 'Manager (" . date('Y-m-d') . ")', '<p>Disetujui untuk melanjutkan produksi normal. Pastikan pemantauan filter keramik ditingkatkan.</p>')");
+            VALUES ('QC-APPR-$ym-001', 'Sertifikat Pelepasan Produk Batch B-202', 'Botol_600ml', 'Approval_Manager', '$today', 'Agus Setiawan', 'Mesin Filter Ozon #1', 'Admin Data Entry QC', 'Lolos', $idA5, 'QC_AMDK/Botol_600ml/2026/April', 'Approved', 'Manager Produksi (" . date('Y-m-d') . ")', 'Produksi dinyatakan layak edar.')");
 
-        // --- SIKLUS 2: BATCH G-99 (GALON 19L - PASSED) ---
-        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, folder_path, ph, tds, kekeruhan, approval_status) 
-            VALUES ('QC-LABS-$ym-002', 'Laporan Rutin Mutu Galon G-99', 'Galon_19L', 'Uji_Lab', '$today', 'Budi Santoso', 'Mesin Filling Galon B', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Galon_19L/2026/April', '7.1', '82', '0.1', 'Waiting Approval')");
+        // --- SIKLUS B: KASUS MEKANIK MESIN (KEBOCORAN O-RING) ---
+        // 01. Sampling
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, folder_path) 
+            VALUES ('QC-BTCH-$ym-002', 'Log Sampling Produksi Batch G-303', 'Galon_19L', 'Catatan_Batch', '$yesterday', 'Indah Permata', 'Mesin Filling Galon B', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Galon_19L/2026/April')");
+        $idB1 = $pdo->lastInsertId();
+
+        // 02. Uji Lab (REJECT)
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, ph, tds, kekeruhan, deskripsi, folder_path) 
+            VALUES ('QC-LABS-$ym-002', 'Uji Tekanan & Mutu Fisik Galon G-303', 'Galon_19L', 'Uji_Lab', '$yesterday', 'Budi Santoso', 'Mesin Filling Galon B', 'Admin Data Entry QC', 'Reject', $idB1, '7.0', '98', '0.2', '<strong>Reject:</strong> Volume pengisian tidak stabil dan ditemukan rembesan air pada tutup galon.', 'QC_AMDK/Galon_19L/2026/April')");
+        $idB2 = $pdo->lastInsertId();
+
+        // 03. Diagnosis
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, deskripsi, folder_path) 
+            VALUES ('QC-DIAG-$ym-002', 'Investigasi Kebocoran Filling Head', '-', 'Diagnosis_Mesin', '$today', 'Agus Setiawan', 'Mesin Filling Galon B', 'Admin Data Entry QC', 'Lolos', $idB2, '<strong>Diagnosis:</strong> O-Ring pada Filling Head nomor 2 sudah aus dan retak, menyebabkan tekanan pengisian drop.', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
+        $idB3 = $pdo->lastInsertId();
+
+        // 04. Perbaikan
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, parent_doc_id, deskripsi, folder_path) 
+            VALUES ('QC-REPR-$ym-002', 'Penggantian Sparepart O-Ring Head #2', '-', 'Laporan_Perbaikan', '$today', 'Agus Setiawan', 'Mesin Filling Galon B', 'Admin Data Entry QC', 'Lolos', $idB3, '<strong>Perbaikan:</strong> Penggantian O-Ring seal baru (P/N: OR-9902). Kalibrasi ulang tekanan nozzle pengisian.', 'QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/2026')");
+        
+        // --- SIKLUS C: KASUS NORMAL (LOLOS RUTIN) ---
+        $pdo->exec("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, folder_path, ph, tds, kekeruhan) 
+            VALUES ('QC-LABS-$ym-003', 'Uji Mutu Berkala Batch BT-505', 'Botol_330ml', 'Uji_Lab', '$today', 'Indah Permata', 'Mesin Filling Botol A', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Botol_330ml/2026/April', '7.0', '80', '0.05')");
     }
 
 } catch (PDOException $e) {

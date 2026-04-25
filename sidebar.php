@@ -11,80 +11,101 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
 
 <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        aside, nav, header, .sidebar-container { display: none !important; }
+        main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+        .flex { display: block !important; }
+    }
+</style>
 
 <div class="flex h-screen bg-slate-50 font-sans">
     <!-- Sidebar: Clean Mineral White Style -->
-    <div class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm">
-        <div class="p-6 bg-white flex items-center gap-3 border-b border-slate-100">
-            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-600/10 text-white">
-                💧
+    <div class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm no-print sidebar-container">
+        <div class="p-8 bg-white flex items-center gap-4 border-b border-slate-100">
+            <div class="w-12 h-12 bg-sky-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-sky-600/20 text-white font-black">
+                MP
             </div>
             <div>
-                <h1 class="text-lg font-black tracking-tight text-slate-800">QC-DMS</h1>
-                <p class="text-[9px] text-blue-500 uppercase tracking-widest font-black">Mineral Pure</p>
+                <h1 class="text-xl font-black tracking-tight text-slate-800 leading-none">QC-DMS</h1>
+                <p class="text-[10px] text-sky-500 uppercase tracking-[0.2em] font-black mt-1">Mineral Pure</p>
             </div>
         </div>
         
-        <nav class="flex-grow py-6 px-3">
-            <ul class="space-y-1">
+        <nav class="flex-grow py-8 px-4">
+            <ul class="space-y-2">
                 <li>
                     <a href="index.php" 
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600' ?>">
-                        <span class="text-base">📊</span>
-                        <span class="font-bold text-sm">Dashboard</span>
+                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-sky-600 text-white shadow-xl shadow-sky-600/20' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
+                        <span class="text-lg">📊</span>
+                        <span class="font-bold text-sm uppercase tracking-wide">Ringkasan Utama</span>
                     </a>
                 </li>
 
-                <p class="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] px-4 mt-8 mb-2">Modul Operasional</p>
+                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] px-5 mt-10 mb-4">ALUR KERJA MUTU</p>
                 
+                <?php
+                $steps = [
+                    'step1' => ['01', 'Sampling (Batch)', '📄'],
+                    'step2' => ['02', 'Uji Laboratorium', '🧪'],
+                    'step3' => ['03', 'Diagnosis Masalah', '⚙️'],
+                    'step4' => ['04', 'Perbaikan Teknik', '🔧'],
+                    'step5' => ['05', 'Uji Verifikasi', '🔬'],
+                    'step6' => ['06', 'Approval Final', '⚖️'],
+                ];
+                foreach ($steps as $key => $val):
+                    $is_active = (isset($_GET['filter']) && $_GET['filter'] == $key);
+                ?>
                 <li>
-                    <a href="index.php?filter=lab" 
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'lab') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600' ?>">
-                        <span class="text-base">🧪</span>
-                        <span class="font-bold text-sm">Laboratorium</span>
-                    </a>
+                    <div class="flex items-center gap-1 group">
+                        <a href="index.php?filter=<?= $key ?>" 
+                           class="flex-grow flex items-center gap-5 px-5 py-4 rounded-2xl transition-all duration-200 <?= $is_active ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
+                            <span class="text-lg font-black <?= $is_active ? 'text-white' : 'text-sky-200' ?>"><?= $val[0] ?></span>
+                            <span class="font-bold text-xs uppercase tracking-tight"><?= $val[1] ?></span>
+                        </a>
+                        <?php if ($_SESSION['role'] == 'Admin_Entry'): ?>
+                        <a href="add.php?step=<?= substr($key, 4) ?>" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-sky-600 font-bold transition-all text-xl" title="Input Baru">+</a>
+                        <?php endif; ?>
+                    </div>
                 </li>
-                
-                <li>
-                    <a href="index.php?filter=maintenance" 
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'maintenance') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600' ?>">
-                        <span class="text-base">🛠️</span>
-                        <span class="font-bold text-sm">Maintenance</span>
-                    </a>
-                </li>
+                <?php endforeach; ?>
 
+                <?php if ($_SESSION['role'] == 'Manager'): ?>
+                <p class="text-[10px] font-black text-rose-400 uppercase tracking-[0.3em] px-5 mt-10 mb-4">OTORISASI</p>
                 <li>
-                    <a href="index.php?filter=approval" 
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'approval') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600' ?>">
-                        <span class="text-base">⚖️</span>
-                        <span class="font-bold text-sm">Approval</span>
+                    <a href="index.php?filter=waiting" 
+                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'waiting') ? 'bg-rose-600 text-white shadow-xl shadow-rose-600/20' : 'text-slate-500 hover:bg-rose-50 hover:text-rose-600' ?>">
+                        <span class="text-lg">⚖️</span>
+                        <span class="font-bold text-sm uppercase tracking-wide">Butuh Approval</span>
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <?php if ($_SESSION['role'] == 'Admin_Entry'): ?>
-                <p class="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] px-4 mt-8 mb-2">Input Data</p>
+                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] px-5 mt-10 mb-4">ADMINISTRASI</p>
                 <li>
                     <a href="add.php" 
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= $current_page == 'add.php' ? 'bg-blue-700 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white' ?>">
-                        <span class="text-base">➕</span>
-                        <span class="font-bold text-sm">Tambah Laporan</span>
+                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= $current_page == 'add.php' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
+                        <span class="text-lg">➕</span>
+                        <span class="font-bold text-sm uppercase tracking-wide">Laporan Baru</span>
                     </a>
                 </li>
                 <?php endif; ?>
             </ul>
         </nav>
 
-        <!-- Role Switcher -->
-        <div class="p-4 bg-slate-50 border-t border-slate-100 m-3 rounded-2xl">
-            <p class="text-[9px] font-black text-slate-400 uppercase mb-3 text-center tracking-widest">Simulasi Role</p>
-            <div class="flex flex-col gap-2">
+        <!-- Role Switcher (Enhanced) -->
+        <div class="p-6 bg-slate-100 border-t border-slate-200 m-4 rounded-3xl">
+            <p class="text-[11px] font-black text-slate-500 uppercase mb-4 text-center tracking-[0.2em]">Pindah Simulasi Role</p>
+            <div class="flex flex-col gap-3">
                 <a href="?switch_role=Admin_Entry" 
-                   class="block py-2 rounded-lg text-[10px] font-bold text-center transition-all <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-400 hover:text-blue-600' ?>">
-                   Entry Admin
+                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white shadow-sky-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-sky-600 hover:border-sky-200' ?>">
+                   👤 ENTRY ADMIN
                 </a>
                 <a href="?switch_role=Manager" 
-                   class="block py-2 rounded-lg text-[10px] font-bold text-center transition-all <?= $_SESSION['role'] == 'Manager' ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-400 hover:text-blue-600' ?>">
-                   Produksi Manajer
+                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-rose-600 hover:border-rose-200' ?>">
+                   👑 PRODUKSI MANAJER
                 </a>
             </div>
         </div>
@@ -93,7 +114,7 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
     <!-- Main Content Wrapper -->
     <div class="flex-grow flex flex-col h-screen overflow-hidden">
         <!-- Topbar -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0 z-10">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0 z-10 no-print">
             <div class="flex items-center gap-4">
                 <h2 class="text-xl font-bold text-slate-800">
                     <?php 
