@@ -336,5 +336,8 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
             arrow.style.transform = content.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
         }
     </script>
+    </main>
+    </div>
+    </div>
 </body>
 </html>

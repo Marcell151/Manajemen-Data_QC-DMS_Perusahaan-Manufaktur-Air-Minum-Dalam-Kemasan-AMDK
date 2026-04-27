@@ -107,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body class="antialiased">
     <?php include 'sidebar.php'; ?>
 
-    <div class="ml-72 p-10 max-w-6xl">
+    <div class="p-4 max-w-6xl mx-auto">
         <div class="mb-12 flex justify-between items-end">
             <div>
                 <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Unggah Laporan Mutu</h1>
@@ -265,5 +265,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             window.location.reload();
         }
     </script>
+    </main>
+    </div>
+    </div>
 </body>
 </html>

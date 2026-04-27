@@ -83,42 +83,49 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
 <body class="antialiased">
     <?php include 'sidebar.php'; ?>
 
-    <div class="ml-72 p-10">
+    <div class="p-4 max-w-7xl mx-auto">
         <!-- Header Section -->
-        <div class="mb-10 flex justify-between items-center">
+        <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-                <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Ringkasan Mutu</h1>
-                <p class="text-slate-500 font-medium mt-1">PT. Mineral Pure Indonesia • Unit Manufaktur</p>
+                <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 drop-shadow-sm">Ringkasan Mutu</h1>
+                <p class="text-slate-500 font-medium mt-1 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-sky-500 rounded-full animate-pulse"></span>
+                    PT. Mineral Pure Indonesia • Unit Manufaktur
+                </p>
             </div>
-            <div class="flex items-center gap-4 bg-white p-3 pr-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div class="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center text-sky-600 text-xl">💧</div>
+            <div class="flex items-center gap-4 bg-white/80 backdrop-blur-md p-3 pr-8 rounded-3xl border border-white shadow-xl shadow-slate-200/50">
+                <div class="w-14 h-14 bg-gradient-to-br from-sky-400 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-200">
+                    💧
+                </div>
                 <div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Aktif Sebagai</p>
-                    <p class="text-base font-bold text-slate-800"><?= $_SESSION['role'] == 'Admin_Entry' ? 'Admin Data Entry' : 'Manajer Produksi' ?></p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Aktif Sebagai</p>
+                    <p class="text-lg font-black text-slate-800 tracking-tight leading-none">
+                        <?= $_SESSION['role'] == 'Admin_Entry' ? 'Admin Entry' : 'Manajer Produksi' ?>
+                    </p>
                 </div>
             </div>
         </div>
 
         <!-- Stat Grid -->
-        <div class="grid grid-cols-4 gap-6 mb-12">
-            <div class="stat-card border-l-4 border-l-sky-500">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Laporan</p>
-                <h3 class="text-3xl font-extrabold text-slate-900"><?= $total_docs ?></h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="stat-card border-l-4 border-l-sky-500 group">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-sky-500 transition-colors">Total Laporan</p>
+                <h3 class="text-4xl font-extrabold text-slate-900"><?= $total_docs ?></h3>
                 <p class="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">Arsip Keseluruhan</p>
             </div>
-            <div class="stat-card border-emerald-100 bg-emerald-50/20 border-l-4 border-l-emerald-500">
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lolos Bulan Ini</p>
-                <h3 class="text-3xl font-extrabold text-emerald-700"><?= $inspeksi_bulan_ini ?></h3>
+            <div class="stat-card border-emerald-100 bg-emerald-50/20 border-l-4 border-l-emerald-500 group">
+                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Lolos Bulan Ini</p>
+                <h3 class="text-4xl font-extrabold text-emerald-700"><?= $inspeksi_bulan_ini ?></h3>
                 <p class="text-[9px] text-emerald-600/50 mt-2 font-bold uppercase tracking-tighter">Kualitas Terjaga</p>
             </div>
-            <div class="stat-card border-rose-100 bg-rose-50/20 border-l-4 border-l-rose-500">
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Temuan Reject</p>
-                <h3 class="text-3xl font-extrabold text-rose-700"><?= $total_reject ?></h3>
+            <div class="stat-card border-rose-100 bg-rose-50/20 border-l-4 border-l-rose-500 group">
+                <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Temuan Reject</p>
+                <h3 class="text-4xl font-extrabold text-rose-700"><?= $total_reject ?></h3>
                 <p class="text-[9px] text-rose-600/50 mt-2 font-bold uppercase tracking-tighter">Butuh Tindak Lanjut</p>
             </div>
-            <div class="stat-card border-amber-100 bg-amber-50/20 border-l-4 border-l-amber-500">
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Butuh Approval</p>
-                <h3 class="text-3xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
+            <div class="stat-card border-amber-100 bg-amber-50/20 border-l-4 border-l-amber-500 group">
+                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Butuh Approval</p>
+                <h3 class="text-4xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
                 <p class="text-[9px] text-amber-600/50 mt-2 font-bold uppercase tracking-tighter">Otorisasi Manajer</p>
             </div>
         </div>
@@ -203,6 +210,8 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                 </div>
             <?php endif; ?>
         </div>
+    </main>
+    </div>
     </div>
 </body>
 </html>
