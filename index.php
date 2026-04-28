@@ -132,18 +132,19 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
 
         <!-- Table Controls -->
         <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div class="flex gap-2">
+            <div class="p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                <div class="flex flex-wrap justify-center gap-2">
                     <a href="index.php" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua Data</a>
                     <a href="index.php?filter=waiting" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Butuh Approval</a>
                 </div>
-                <form action="" method="GET" class="relative">
-                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Cari Kode / Produk..." class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-sky-500 outline-none w-64 transition-all">
+                <form action="" method="GET" class="relative w-full md:w-auto">
+                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Cari Kode / Produk..." class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-sky-500 outline-none w-full md:w-64 transition-all">
                     <span class="absolute left-3 top-2.5 opacity-30">🔍</span>
                 </form>
             </div>
 
-            <table class="w-full">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[800px]">
                 <thead>
                     <tr class="bg-slate-50/50">
                         <th class="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Laporan</th>
@@ -202,6 +203,7 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
 
             <?php if (empty($files)): ?>
                 <div class="py-20 text-center bg-slate-50/50">

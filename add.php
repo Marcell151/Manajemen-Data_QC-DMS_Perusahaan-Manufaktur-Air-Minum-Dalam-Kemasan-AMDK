@@ -38,6 +38,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $status = $_POST['status'];
     $deskripsi = $_POST['deskripsi'] ?? '';
     $parent_doc_id = $_POST['parent_doc_id'] ?? null;
+    $external_link = $_POST['external_link'] ?? '';
+    $ph = $_POST['ph'] ?? null;
+    $tds = $_POST['tds'] ?? null;
+    $kekeruhan = $_POST['kekeruhan'] ?? null;
     $file_path = '';
     
     // Logika Upload File
@@ -77,8 +81,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $approval_status = ($jenis == 'Approval_Manager') ? 'Waiting Approval' : '-';
 
-    $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, 'Admin Data Entry QC', $status, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status]);
+    $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, approval_status, external_link, ph, tds, kekeruhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, 'Admin Data Entry QC', $status, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
 
     header("Location: index.php?path=" . $folder_path);
     exit;
@@ -129,9 +133,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <form action="add.php" method="POST" enctype="multipart/form-data" class="form-card">
             <input type="hidden" name="parent_doc_id" value="<?= $parent_id ?>">
             
-            <div class="grid grid-cols-2 gap-16">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
                 <div class="space-y-10">
-                    <div class="bg-sky-50 p-8 rounded-3xl border border-sky-100">
+                    <div class="bg-sky-50 p-6 md:p-8 rounded-3xl border border-sky-100">
                         <label>Tahapan Alur Kerja</label>
                         <select name="jenis" id="jenisSelect" required>
                             <?php foreach ($step_mapping as $val): ?>
@@ -145,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <input type="text" name="nama_dokumen" placeholder="Contoh: Laporan Sampling Air MC-01">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                         <div>
                             <label>Tanggal Form Diisi</label>
                             <input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required>
@@ -161,7 +165,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                         <div>
                             <label>Kode Mesin</label>
                             <select name="machine_id" required>
@@ -177,6 +181,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <option value="<?= $i['nama_inspector'] ?>"><?= $i['nama_inspector'] ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Lab Parameters (Only for Uji_Lab and Uji_Ulang) -->
+                    <div id="labParametersSection" class="hidden">
+                        <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                            <label class="mb-4 text-amber-900 block font-black">Parameter Uji Laboratorium (Hanya Jika Tersedia)</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div>
+                                    <label class="text-[10px] text-amber-700">pH Air</label>
+                                    <input type="number" step="0.01" name="ph" placeholder="Contoh: 7.2" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-amber-700">TDS (PPM)</label>
+                                    <input type="number" step="0.01" name="tds" placeholder="Contoh: 120" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-amber-700">Kekeruhan (NTU)</label>
+                                    <input type="number" step="0.01" name="kekeruhan" placeholder="Contoh: 0.1" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -202,10 +227,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                    <div class="bg-slate-100 p-10 rounded-3xl border-2 border-dashed border-slate-300 text-center">
-                        <label class="mb-6">Scan Dokumen Fisik (Wajib PDF)</label>
-                        <input type="file" name="dokumen_fisik" class="text-xs file:bg-slate-900 file:text-white file:border-none file:px-8 file:py-4 file:rounded-2xl file:mr-6 file:font-black file:cursor-pointer hover:file:bg-sky-600 transition-all">
-                        <p class="text-[10px] text-slate-400 mt-6 font-bold leading-relaxed">*Pastikan tanda tangan basah dan stempel terlihat jelas pada hasil scan.</p>
+                    <div class="bg-slate-100 p-8 rounded-3xl border-2 border-dashed border-slate-300">
+                        <div class="text-center mb-6 border-b border-slate-200 pb-6">
+                            <label class="mb-4 text-slate-700">Opsi 1: Scan Dokumen Fisik</label>
+                            <input type="file" name="dokumen_fisik" class="text-xs file:bg-slate-900 file:text-white file:border-none file:px-6 file:py-3 file:rounded-xl file:mr-4 file:font-black file:cursor-pointer hover:file:bg-sky-600 transition-all mx-auto">
+                            <p class="text-[9px] text-slate-400 mt-3 font-bold leading-relaxed">*Prioritaskan upload scan fisik (PDF/JPG).</p>
+                        </div>
+                        <div>
+                            <label class="mb-3 text-slate-700">Opsi 2: Tautkan Dokumen Cloud (G-Drive / OneDrive)</label>
+                            <input type="url" name="external_link" placeholder="https://..." class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-sky-500 outline-none transition-all">
+                            <p class="text-[9px] text-slate-400 mt-2 font-bold leading-relaxed">*Gunakan ini jika dokumen berasal dari sistem eksternal atau file terlalu besar.</p>
+                        </div>
                     </div>
 
                     <div>
@@ -215,9 +247,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
             </div>
 
-            <div class="mt-16 pt-12 border-t border-slate-100 flex justify-end items-center gap-12">
+            <div class="mt-16 pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-6 md:gap-12">
                 <a href="index.php" class="text-sm font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Batal & Kembali</a>
-                <button type="submit" class="btn-save">Simpan Laporan Mutu</button>
+                <button type="submit" class="btn-save w-full sm:w-auto">Simpan Laporan Mutu</button>
             </div>
         </form>
     </div>
@@ -254,6 +286,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const jenisSelect = document.getElementById('jenisSelect');
+            const labSection = document.getElementById('labParametersSection');
+            
+            function toggleLabParams() {
+                if(jenisSelect.value === 'Uji_Lab' || jenisSelect.value === 'Uji_Ulang') {
+                    labSection.classList.remove('hidden');
+                } else {
+                    labSection.classList.add('hidden');
+                }
+            }
+            
+            jenisSelect.addEventListener('change', toggleLabParams);
+            toggleLabParams(); // Execute on load
+        });
+
         function printBlankForm() {
             const jenisSelect = document.getElementById('jenisSelect');
             document.getElementById('printTitle').innerText = jenisSelect.options[jenisSelect.selectedIndex].text;

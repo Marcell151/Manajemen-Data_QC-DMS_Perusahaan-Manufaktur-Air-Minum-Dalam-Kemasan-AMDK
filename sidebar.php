@@ -20,9 +20,12 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
     }
 </style>
 
-<div class="flex h-screen bg-slate-50 font-sans">
+<div class="flex h-screen bg-slate-50 font-sans overflow-hidden">
+    <!-- Overlay for mobile -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden no-print"></div>
+
     <!-- Sidebar: Clean Mineral White Style -->
-    <div class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm no-print sidebar-container">
+    <div id="mobileSidebar" class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 shadow-sm no-print sidebar-container absolute md:relative z-50 h-full -translate-x-full md:translate-x-0 transition-transform duration-300">
         <div class="p-8 bg-white flex items-center gap-4 border-b border-slate-100">
             <div class="w-12 h-12 bg-sky-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-sky-600/20 text-white font-black">
                 MP
@@ -33,7 +36,7 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
             </div>
         </div>
         
-        <nav class="flex-grow py-8 px-4">
+        <nav class="flex-grow py-8 px-4 overflow-y-auto">
             <ul class="space-y-2">
                 <li>
                     <a href="index.php" 
@@ -112,11 +115,14 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
     </div>
 
     <!-- Main Content Wrapper -->
-    <div class="flex-grow flex flex-col h-screen overflow-hidden">
+    <div class="flex-grow flex flex-col h-screen overflow-hidden w-full">
         <!-- Topbar -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0 z-10 no-print">
-            <div class="flex items-center gap-4">
-                <h2 class="text-xl font-bold text-slate-800">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 no-print">
+            <div class="flex items-center gap-2 md:gap-4">
+                <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xl">
+                    ☰
+                </button>
+                <h2 class="text-lg md:text-xl font-bold text-slate-800 truncate">
                     <?php 
                         if($current_page == 'index.php') echo "File & Report Manager";
                         elseif($current_page == 'add.php') echo "Upload Quality Control";
@@ -140,4 +146,12 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
         </header>
 
         <!-- Scrollable Content Area -->
-        <main class="flex-grow overflow-y-auto bg-slate-50 p-8">
+        <main class="flex-grow overflow-y-auto bg-slate-50 p-4 md:p-8 relative">
+            <script>
+                function toggleSidebar() {
+                    const sidebar = document.getElementById('mobileSidebar');
+                    const overlay = document.getElementById('sidebarOverlay');
+                    sidebar.classList.toggle('-translate-x-full');
+                    overlay.classList.toggle('hidden');
+                }
+            </script>
