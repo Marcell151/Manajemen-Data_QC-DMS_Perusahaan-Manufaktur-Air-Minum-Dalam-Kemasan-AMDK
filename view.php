@@ -123,8 +123,8 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
             <div class="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-800">
                 <div class="p-4 bg-slate-800 flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <span class="text-xl">📄</span>
-                        <h4 class="text-xs font-black text-white uppercase tracking-widest">Pratinjau Dokumen Asli (Scan/Link)</h4>
+                        <span class="text-xl">📸</span>
+                        <h4 class="text-xs font-black text-white uppercase tracking-widest">Pratinjau Foto / Dokumen Bukti (Asli Lapangan)</h4>
                     </div>
                     <?php if (!empty($doc['external_link'])): ?>
                         <a href="<?= htmlspecialchars($doc['external_link']) ?>" target="_blank" class="text-[10px] font-black text-blue-400 hover:text-white transition-all uppercase">Buka di Tab Baru ↗</a>
@@ -151,7 +151,7 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
         <div class="mb-12 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 no-print action-area">
             <?php if (!empty($doc['file_path'])): ?>
                 <a href="<?= htmlspecialchars($doc['file_path']) ?>" download class="w-full sm:w-auto justify-center px-8 md:px-12 py-4 md:py-5 bg-blue-600 text-white text-xs md:text-sm font-black uppercase rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/30 flex items-center gap-3">
-                    <span class="text-2xl">📥</span> Unduh Dokumen Asli (Scan)
+                    <span class="text-2xl">📥</span> Unduh Dokumen Bukti (Asli)
                 </a>
             <?php else: ?>
                 <button onclick="window.print()" class="w-full sm:w-auto justify-center px-8 md:px-10 py-4 bg-white border-2 border-slate-200 text-slate-700 text-xs font-black uppercase rounded-2xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3">
@@ -218,7 +218,7 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                             </li>
                             <li class="flex justify-between items-center">
                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Diunggah Oleh</span>
-                                <span class="text-sm font-black text-slate-700"><?= htmlspecialchars($doc['admin_entry_name'] ?? 'System Admin') ?></span>
+                                <span class="text-sm font-black text-slate-700"><?= htmlspecialchars(str_replace('_', ' ', $doc['admin_entry_name'] ?? 'Pekerja Lapangan')) ?></span>
                             </li>
                             <li class="flex justify-between items-center">
                                 <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Inspektur (Fisik)</span>

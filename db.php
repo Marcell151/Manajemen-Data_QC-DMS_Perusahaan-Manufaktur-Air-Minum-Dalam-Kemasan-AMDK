@@ -16,7 +16,7 @@ if (isset($_GET['switch_role'])) {
 }
 
 if (!isset($_SESSION['role'])) {
-    $_SESSION['role'] = 'Admin_Entry'; // Role simulasi default
+    $_SESSION['role'] = 'Pekerja_Lapangan'; // Role simulasi default: Pekerja Lapangan
 }
 
 // Tentukan path file SQLite

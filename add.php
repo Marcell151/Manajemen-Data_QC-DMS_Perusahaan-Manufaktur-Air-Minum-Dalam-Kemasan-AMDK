@@ -5,17 +5,13 @@ require 'db.php';
 $machines = $pdo->query("SELECT * FROM machines ORDER BY nama_mesin ASC")->fetchAll(PDO::FETCH_ASSOC);
 $inspectors = $pdo->query("SELECT * FROM inspectors ORDER BY nama_inspector ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// Proteksi Role: Hanya Admin yang boleh akses Input Dokumen
-if ($_SESSION['role'] === 'Manager') {
-    header("Location: index.php");
-    exit;
-}
-
-// Pre-fill logic for Traceability/Follow-up
-$parent_id = $_GET['p_id'] ?? '';
-$pre_machine = $_GET['m_id'] ?? '';
-$pre_batch = $_GET['prod'] ?? '';
-$step = $_GET['step'] ?? '';
+// Daftar Produk Standar
+$product_list = [
+    'Mineral_600ml' => 'Mineral 600ml',
+    'Mineral_330ml' => 'Mineral 330ml',
+    'Cup_240ml' => 'Cup 240ml',
+    'Galon_19L' => 'Galon 19L'
+];
 
 // Mapping step ke jenis dokumen
 $step_mapping = [
@@ -26,8 +22,32 @@ $step_mapping = [
     '5' => 'Uji_Ulang',
     '6' => 'Approval_Manager'
 ];
-$pre_jenis = $step_mapping[$step] ?? '';
 
+$step = $_GET['step'] ?? '';
+$is_fixed_step = !empty($step); // Jika ada parameter step, maka langkah dikunci
+$current_step_num = $step ?: '1';
+$pre_jenis = $step_mapping[$current_step_num] ?? 'Catatan_Batch';
+
+// PROTEKSI HAK AKSES INPUT (Berdasarkan Role)
+$can_access_input = false;
+if ($_SESSION['role'] == 'Pekerja_Lapangan') {
+    if (!$is_fixed_step || in_array($step, ['1', '3', '4', '5'])) $can_access_input = true;
+} elseif ($_SESSION['role'] == 'Admin_Entry') {
+    if (!$is_fixed_step || $step == '2') $can_access_input = true;
+}
+
+if (!$can_access_input && $_SESSION['role'] !== 'Manager') {
+    header("Location: index.php");
+    exit;
+}
+
+// Untuk Step > 01, ambil daftar Laporan Induk (Step 01) yang aktif
+$parent_options = [];
+if ($current_step_num != '1') {
+    $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Catatan_Batch' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Logic Simpan
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama = $_POST['nama_dokumen'] ?? 'Dokumen Baru';
     $produk = $_POST['produk'] ?? '-';
@@ -44,7 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $kekeruhan = $_POST['kekeruhan'] ?? null;
     $file_path = '';
     
-    // Logika Upload File
     if (isset($_FILES['dokumen_fisik']) && $_FILES['dokumen_fisik']['error'] == 0) {
         $upload_dir = 'uploads/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
@@ -55,7 +74,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // RUMUS ID DOKUMEN: QC-[CODE]-[YYYYMM]-[SEQ]
     $codes = ['Catatan_Batch' => 'BTCH', 'Uji_Lab' => 'LABS', 'Diagnosis_Mesin' => 'DIAG', 'Laporan_Perbaikan' => 'REPR', 'Uji_Ulang' => 'RETS', 'Approval_Manager' => 'APPR'];
     $prefix = $codes[$jenis] ?? 'MISC';
     $yearMonth = date("ym", strtotime($tanggal));
@@ -72,27 +90,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $timestamp = strtotime($tanggal);
     $tahun = date("Y", $timestamp);
-    if ($jenis == 'Diagnosis_Mesin' || $jenis == 'Laporan_Perbaikan') {
-        $folder_path = "QC_AMDK/Laporan Diagnosis & Perbaikan Mesin/{$tahun}";
-    } else {
-        $bulan = date("F", $timestamp);
-        $folder_path = "QC_AMDK/{$produk}/{$tahun}/{$bulan}";
-    }
+    $bulan = date("F", $timestamp);
+    $folder_path = "QC_AMDK/{$produk}/{$tahun}/{$bulan}";
 
     $approval_status = ($jenis == 'Approval_Manager') ? 'Waiting Approval' : '-';
 
     $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, approval_status, external_link, ph, tds, kekeruhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, 'Admin Data Entry QC', $status, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
+    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $_SESSION['role'], $status, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
 
-    header("Location: index.php?path=" . $folder_path);
+    header("Location: index.php");
     exit;
 }
+
+$is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Input QC - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -100,221 +117,205 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         :root { --primary: #0284c7; --bg-main: #f8fafc; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: #1e293b; }
         h1 { font-family: 'Outfit', sans-serif; }
-        .form-card { background: white; border-radius: 32px; border: 1px solid #e2e8f0; padding: 3rem; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+        .form-card { background: white; border-radius: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
         label { display: block; font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem; }
         input, select, textarea { width: 100%; padding: 1rem 1.25rem; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 1rem; font-weight: 600; color: #1e293b; transition: all 0.2s; background: #fdfdfd; }
         input:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); background: white; }
         .btn-save { background: #0f172a; color: white; padding: 1.25rem 3rem; border-radius: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; border: none; }
         .btn-save:hover { background: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2); }
+        .camera-btn { background: #0284c7; color: white; padding: 2rem; border-radius: 24px; text-align: center; cursor: pointer; transition: all 0.2s; border: 4px dashed rgba(255,255,255,0.3); }
+        .camera-btn:hover { background: #0369a1; transform: scale(1.02); }
     </style>
 </head>
 <body class="antialiased">
     <?php include 'sidebar.php'; ?>
 
-    <div class="p-4 max-w-6xl mx-auto">
-        <div class="mb-12 flex justify-between items-end">
+    <div class="p-4 max-w-5xl mx-auto">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
-                <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Unggah Laporan Mutu</h1>
-                <p class="text-slate-500 font-medium italic">Konversi Form Fisik ke Digital • PT. Mineral Pure Indonesia</p>
+                <p class="text-[10px] font-black text-sky-600 uppercase tracking-[0.3em] mb-1">Entry Sistem Mutu</p>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Input Bukti Lapangan</h1>
             </div>
-            <button type="button" onclick="printBlankForm()" class="px-6 py-3 bg-white border-2 border-slate-900 text-slate-900 text-xs font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-lg">🖨️ Cetak Form Kosong Lapangan</button>
+            <button type="button" onclick="printBlankForm()" class="no-print px-5 py-3 bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all">🖨️ Cetak Form Kosong</button>
         </div>
 
-        <?php if ($parent_id): ?>
-            <div class="mb-10 p-6 bg-sky-50 border border-sky-100 rounded-3xl flex items-center gap-4">
-                <span class="text-3xl">🔗</span>
-                <div>
-                    <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest">Koneksi Traceability</p>
-                    <p class="text-base font-bold text-sky-800 tracking-tight">Dokumen ini adalah tindak lanjut dari Laporan #<?= htmlspecialchars($parent_id) ?></p>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <form action="add.php" method="POST" enctype="multipart/form-data" class="form-card">
-            <input type="hidden" name="parent_doc_id" value="<?= $parent_id ?>">
+        <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-6 md:p-12">
             
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
-                <div class="space-y-10">
-                    <div class="bg-sky-50 p-6 md:p-8 rounded-3xl border border-sky-100">
-                        <label>Tahapan Alur Kerja</label>
-                        <select name="jenis" id="jenisSelect" required>
-                            <?php foreach ($step_mapping as $val): ?>
-                                <option value="<?= $val ?>" <?= ($pre_jenis == $val) ? 'selected' : '' ?>><?= str_replace('_', ' ', $val) ?></option>
+            <div class="<?= $is_mobile_mode ? 'flex flex-col gap-10' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
+                
+                <div class="space-y-8">
+                    <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                        <label>Langkah Alur Kerja</label>
+                        <select name="jenis" id="jenisSelect" onchange="window.location.href='add.php?step=' + this.options[this.selectedIndex].getAttribute('data-step')" <?= $is_fixed_step ? 'readonly class="bg-slate-100 pointer-events-none opacity-70"' : '' ?>>
+                            <?php foreach ($step_mapping as $k => $val): 
+                                // Filter berdasarkan role untuk transparansi input
+                                $show_option = false;
+                                if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($k, ['1', '3', '4', '5'])) $show_option = true;
+                                if ($_SESSION['role'] == 'Admin_Entry' && $k == '2') $show_option = true;
+                                if ($_SESSION['role'] == 'Manager' && $k == '6') $show_option = true;
+                                
+                                if (!$show_option) continue;
+                            ?>
+                                <option value="<?= $val ?>" data-step="<?= $k ?>" <?= ($current_step_num == $k) ? 'selected' : '' ?>><?= $val[0].$val[1] ?>. <?= str_replace('_', ' ', $val) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
+                    <?php if ($current_step_num != '1'): ?>
+                    <div class="bg-sky-50 p-6 rounded-3xl border border-sky-100">
+                        <label class="text-sky-700">Pilih Laporan Induk (Batch Sampling)</label>
+                        <select name="parent_doc_id" id="parentSelect" required onchange="autoFillMetadata()">
+                            <option value="">-- Pilih Batch Yang Sedang Berjalan --</option>
+                            <?php foreach ($parent_options as $p): ?>
+                                <option value="<?= $p['id'] ?>" data-prod="<?= $p['produk'] ?>" data-machine="<?= $p['machine_id'] ?>">
+                                    <?= $p['no_dokumen'] ?> (<?= str_replace('_', ' ', $p['produk']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-[9px] text-sky-500 mt-2 font-bold italic">*Pilih ini agar data Batch & Produk terisi otomatis.</p>
+                    </div>
+                    <?php endif; ?>
+
                     <div>
-                        <label>Nama Laporan (Judul di Kertas)</label>
-                        <input type="text" name="nama_dokumen" placeholder="Contoh: Laporan Sampling Air MC-01">
+                        <label>Tanggal Pelaporan</label>
+                        <input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                        <div>
-                            <label>Tanggal Form Diisi</label>
-                            <input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required>
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <label>Lini Produk</label>
-                            <select name="produk" required>
-                                <option value="Mineral_600ml" <?= ($pre_batch == 'Mineral_600ml') ? 'selected' : '' ?>>Mineral 600ml</option>
-                                <option value="Mineral_330ml" <?= ($pre_batch == 'Mineral_330ml') ? 'selected' : '' ?>>Mineral 330ml</option>
-                                <option value="Cup_240ml" <?= ($pre_batch == 'Cup_240ml') ? 'selected' : '' ?>>Cup 240ml</option>
-                                <option value="Galon_19L" <?= ($pre_batch == 'Galon_19L') ? 'selected' : '' ?>>Galon 19L</option>
+                            <select name="produk" id="produkSelect" required>
+                                <option value="">-- Pilih Produk --</option>
+                                <?php foreach ($product_list as $key => $val): ?>
+                                    <option value="<?= $key ?>"><?= $val ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
                         <div>
                             <label>Kode Mesin</label>
-                            <select name="machine_id" required>
+                            <select name="machine_id" id="machineSelect" required>
+                                <option value="">-- Pilih Mesin --</option>
                                 <?php foreach ($machines as $m): ?>
-                                    <option value="<?= $m['nama_mesin'] ?>" <?= ($pre_machine == $m['nama_mesin']) ? 'selected' : '' ?>><?= $m['nama_mesin'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Petugas Lapangan</label>
-                            <select name="inspector" required>
-                                <?php foreach ($inspectors as $i): ?>
-                                    <option value="<?= $i['nama_inspector'] ?>"><?= $i['nama_inspector'] ?></option>
+                                    <option value="<?= $m['nama_mesin'] ?>"><?= $m['nama_mesin'] ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Dynamic Lab Parameters (Only for Uji_Lab and Uji_Ulang) -->
-                    <div id="labParametersSection" class="hidden">
-                        <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100">
-                            <label class="mb-4 text-amber-900 block font-black">Parameter Uji Laboratorium (Hanya Jika Tersedia)</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div>
-                                    <label class="text-[10px] text-amber-700">pH Air</label>
-                                    <input type="number" step="0.01" name="ph" placeholder="Contoh: 7.2" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] text-amber-700">TDS (PPM)</label>
-                                    <input type="number" step="0.01" name="tds" placeholder="Contoh: 120" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] text-amber-700">Kekeruhan (NTU)</label>
-                                    <input type="number" step="0.01" name="kekeruhan" placeholder="Contoh: 0.1" class="bg-white border-amber-200 focus:border-amber-500 px-4 py-3 rounded-xl text-sm w-full outline-none">
-                                </div>
-                            </div>
+                    <div>
+                        <label>Petugas Lapangan</label>
+                        <select name="inspector" required>
+                            <?php foreach ($inspectors as $i): ?>
+                                <option value="<?= $i['nama_inspector'] ?>"><?= $i['nama_inspector'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <?php if ($current_step_num == '2' || $current_step_num == '5'): ?>
+                    <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                        <label class="mb-4 text-amber-900 block font-black">Parameter Lab Aktual</label>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label class="text-[9px]">pH</label><input type="number" step="0.1" name="ph" class="p-2 text-sm"></div>
+                            <div><label class="text-[9px]">TDS</label><input type="number" step="1" name="tds" class="p-2 text-sm"></div>
+                            <div><label class="text-[9px]">NTU</label><input type="number" step="0.01" name="kekeruhan" class="p-2 text-sm"></div>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="space-y-10">
                     <div>
-                        <label>Keputusan Akhir (Verdict)</label>
-                        <div class="flex gap-6">
+                        <label>Hasil Pemeriksaan / Bukti</label>
+                        <div class="flex gap-4">
                             <label class="flex-grow cursor-pointer group">
                                 <input type="radio" name="status" value="Passed" checked class="hidden peer">
-                                <div class="p-8 border-2 border-slate-100 rounded-3xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all group-hover:bg-slate-50">
-                                    <span class="block text-4xl mb-2">✓</span>
-                                    <span class="text-xs font-black uppercase text-slate-400 peer-checked:text-emerald-700 tracking-widest">LOLOS</span>
+                                <div class="py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
+                                    <span class="block text-2xl mb-1">✓</span>
+                                    <span class="text-[10px] font-black text-slate-400 peer-checked:text-emerald-700 uppercase">Lolos</span>
                                 </div>
                             </label>
                             <label class="flex-grow cursor-pointer group">
                                 <input type="radio" name="status" value="Reject" class="hidden peer">
-                                <div class="p-8 border-2 border-slate-100 rounded-3xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all group-hover:bg-slate-50">
-                                    <span class="block text-4xl mb-2">✗</span>
-                                    <span class="text-xs font-black uppercase text-slate-400 peer-checked:text-rose-700 tracking-widest">REJECT</span>
+                                <div class="py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all">
+                                    <span class="block text-2xl mb-1">✗</span>
+                                    <span class="text-[10px] font-black text-slate-400 peer-checked:text-rose-700 uppercase">Reject</span>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    <div class="bg-slate-100 p-8 rounded-3xl border-2 border-dashed border-slate-300">
-                        <div class="text-center mb-6 border-b border-slate-200 pb-6">
-                            <label class="mb-4 text-slate-700">Opsi 1: Scan Dokumen Fisik</label>
-                            <input type="file" name="dokumen_fisik" class="text-xs file:bg-slate-900 file:text-white file:border-none file:px-6 file:py-3 file:rounded-xl file:mr-4 file:font-black file:cursor-pointer hover:file:bg-sky-600 transition-all mx-auto">
-                            <p class="text-[9px] text-slate-400 mt-3 font-bold leading-relaxed">*Prioritaskan upload scan fisik (PDF/JPG).</p>
+                    <div class="space-y-6">
+                        <label>Lampiran Bukti (Foto/PDF)</label>
+                        <div class="camera-btn" onclick="document.getElementById('fileInput').click()">
+                            <span class="text-4xl block mb-2">📸</span>
+                            <span class="text-sm font-black uppercase tracking-widest">Ambil Foto / Unggah Bukti</span>
+                            <p class="text-[10px] opacity-60 mt-2">Gunakan kamera tablet untuk bukti lapangan</p>
                         </div>
-                        <div>
-                            <label class="mb-3 text-slate-700">Opsi 2: Tautkan Dokumen Cloud (G-Drive / OneDrive)</label>
-                            <input type="url" name="external_link" placeholder="https://..." class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-sky-500 outline-none transition-all">
-                            <p class="text-[9px] text-slate-400 mt-2 font-bold leading-relaxed">*Gunakan ini jika dokumen berasal dari sistem eksternal atau file terlalu besar.</p>
+                        <input type="file" name="dokumen_fisik" id="fileInput" accept="image/*,application/pdf" capture="environment" class="hidden" onchange="updateFileName(this)">
+                        <div id="fileStatus" class="text-center text-xs font-bold text-emerald-600 hidden">✅ File Siap Diunggah</div>
+                        
+                        <div class="pt-4 border-t border-slate-100">
+                            <label class="text-[9px]">Atau Gunakan Tautan Cloud (G-Drive)</label>
+                            <input type="url" name="external_link" placeholder="https://..." class="p-3 text-sm">
                         </div>
                     </div>
 
                     <div>
-                        <label>Ringkasan Temuan Lapangan</label>
-                        <textarea name="deskripsi" rows="5" placeholder="Tuliskan temuan anomali atau catatan khusus di sini..."></textarea>
+                        <label>Catatan Temuan Lapangan</label>
+                        <textarea name="deskripsi" rows="4" placeholder="Tuliskan catatan atau kendala di sini..."></textarea>
                     </div>
                 </div>
+
             </div>
 
-            <div class="mt-16 pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-6 md:gap-12">
-                <a href="index.php" class="text-sm font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Batal & Kembali</a>
-                <button type="submit" class="btn-save w-full sm:w-auto">Simpan Laporan Mutu</button>
+            <div class="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                <p class="text-[10px] text-slate-400 font-bold italic">Pastikan data & foto sudah benar sebelum menyimpan.</p>
+                <div class="flex gap-4 w-full md:w-auto">
+                    <a href="index.php" class="flex-grow md:flex-grow-0 px-8 py-4 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Batal</a>
+                    <button type="submit" class="btn-save flex-grow md:flex-grow-0">Kirim Laporan</button>
+                </div>
             </div>
         </form>
     </div>
 
-    <div id="blankFormTemplate" class="hidden">
-        <div style="padding: 0.5in; font-family: 'Times New Roman', serif; color: black;">
-            <table style="width: 100%; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                <tr>
-                    <td style="width: 60px;"><div style="width: 50px; height: 50px; background: black; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;">MP</div></td>
-                    <td>
-                        <h1 style="margin: 0; font-size: 22px; font-weight: bold; text-transform: uppercase;">PT. MINERAL PURE INDONESIA</h1>
-                        <p style="margin: 3px 0 0; font-size: 9px; font-weight: bold; text-transform: uppercase;">Quality Control Department - Field Document</p>
-                    </td>
-                    <td style="text-align: right; vertical-align: bottom;"><div style="border: 2px solid black; padding: 5px 10px; font-weight: bold; font-size: 10px;">FORMULIR KOSONG</div></td>
-                </tr>
-            </table>
-            <h2 id="printTitle" style="text-align: center; text-decoration: underline; text-transform: uppercase; margin-bottom: 30px;">[JUDUL FORMULIR]</h2>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px;">
-                <tr><td style="border: 1px solid black; padding: 10px; width: 20%; font-weight: bold; background: #eee;">TANGGAL</td><td style="border: 1px solid black; padding: 10px; width: 30%;">____ / ____ / 202____</td><td style="border: 1px solid black; padding: 10px; width: 20%; font-weight: bold; background: #eee;">KODE MESIN</td><td style="border: 1px solid black; padding: 10px; width: 30%;">________________</td></tr>
-                <tr><td style="border: 1px solid black; padding: 10px; font-weight: bold; background: #eee;">PRODUK / BATCH</td><td style="border: 1px solid black; padding: 10px;">________________</td><td style="border: 1px solid black; padding: 10px; font-weight: bold; background: #eee;">INSPECTOR</td><td style="border: 1px solid black; padding: 10px;">________________</td></tr>
-            </table>
-            <div style="border: 1px solid black; padding: 20px; text-align: center; margin-bottom: 30px;">
-                <p style="font-weight: bold; margin-bottom: 15px; font-size: 10px;">HASIL PEMERIKSAAN (VERDICT)</p>
-                <div style="display: flex; justify-content: center; gap: 60px;"><div>[ ] LOLOS (PASSED)</div><div>[ ] GAGAL (REJECT)</div></div>
-            </div>
-            <div style="border: 1px solid black; padding: 10px; min-height: 300px; margin-bottom: 30px;">
-                <p style="font-weight: bold; text-decoration: underline; font-size: 10px; margin-bottom: 10px;">CATATAN TEMUAN & ANALISIS LAPANGAN:</p>
-            </div>
-            <table style="width: 100%; text-align: center; font-size: 11px;">
-                <tr><td style="padding-bottom: 60px; font-weight: bold;">INSPECTOR QC</td><td style="padding-bottom: 60px; font-weight: bold;">MANAJER PRODUKSI</td></tr>
-                <tr><td>( ____________________ )</td><td>( ____________________ )</td></tr>
-            </table>
-        </div>
-    </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const jenisSelect = document.getElementById('jenisSelect');
-            const labSection = document.getElementById('labParametersSection');
+        function autoFillMetadata() {
+            const select = document.getElementById('parentSelect');
+            const selectedOption = select.options[select.selectedIndex];
             
-            function toggleLabParams() {
-                if(jenisSelect.value === 'Uji_Lab' || jenisSelect.value === 'Uji_Ulang') {
-                    labSection.classList.remove('hidden');
-                } else {
-                    labSection.classList.add('hidden');
-                }
+            if (selectedOption.value) {
+                const prod = selectedOption.getAttribute('data-prod');
+                const machine = selectedOption.getAttribute('data-machine');
+                
+                // Update Selects
+                const prodSelect = document.getElementById('produkSelect');
+                const machineSelect = document.getElementById('machineSelect');
+                
+                prodSelect.value = prod;
+                machineSelect.value = machine;
+                
+                // Beri efek highlight visual bahwa data berubah
+                prodSelect.classList.add('bg-sky-50');
+                machineSelect.classList.add('bg-sky-50');
+                setTimeout(() => {
+                    prodSelect.classList.remove('bg-sky-50');
+                    machineSelect.classList.remove('bg-sky-50');
+                }, 1000);
             }
-            
-            jenisSelect.addEventListener('change', toggleLabParams);
-            toggleLabParams(); // Execute on load
-        });
+        }
+
+        function updateFileName(input) {
+            if (input.files && input.files[0]) {
+                document.getElementById('fileStatus').classList.remove('hidden');
+                document.getElementById('fileStatus').innerText = "✅ Berhasil Memuat: " + input.files[0].name;
+            }
+        }
 
         function printBlankForm() {
             const jenisSelect = document.getElementById('jenisSelect');
-            document.getElementById('printTitle').innerText = jenisSelect.options[jenisSelect.selectedIndex].text;
-            const printContent = document.getElementById('blankFormTemplate').innerHTML;
-            const originalContent = document.body.innerHTML;
-            document.body.innerHTML = printContent;
+            alert('Membuka Template Cetak Formal untuk ' + jenisSelect.options[jenisSelect.selectedIndex].text);
             window.print();
-            document.body.innerHTML = originalContent;
-            window.location.reload();
         }
     </script>
-    </main>
-    </div>
-    </div>
 </body>
 </html>

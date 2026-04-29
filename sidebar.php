@@ -6,7 +6,12 @@ if (!isset($_SESSION['role'])) {
     $_SESSION['role'] = 'Admin_Entry'; // Default Role
 }
 
-$role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Manajer Produksi';
+$role_name_map = [
+    'Admin_Entry' => 'Admin Data / QC Lab',
+    'Manager' => 'Manajer Produksi',
+    'Pekerja_Lapangan' => 'Pekerja Lapangan / Teknisi'
+];
+$role_name = $role_name_map[$_SESSION['role']] ?? 'User';
 ?>
 
 <!-- Tailwind CSS CDN -->
@@ -59,6 +64,12 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
                 ];
                 foreach ($steps as $key => $val):
                     $is_active = (isset($_GET['filter']) && $_GET['filter'] == $key);
+                    $step_num = (int)substr($key, 4);
+                    
+                    // Logika hak akses input (+)
+                    $can_add = false;
+                    if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($step_num, [1, 3, 4, 5])) $can_add = true;
+                    if ($_SESSION['role'] == 'Admin_Entry' && $step_num == 2) $can_add = true;
                 ?>
                 <li>
                     <div class="flex items-center gap-1 group">
@@ -67,8 +78,8 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
                             <span class="text-lg font-black <?= $is_active ? 'text-white' : 'text-sky-200' ?>"><?= $val[0] ?></span>
                             <span class="font-bold text-xs uppercase tracking-tight"><?= $val[1] ?></span>
                         </a>
-                        <?php if ($_SESSION['role'] == 'Admin_Entry'): ?>
-                        <a href="add.php?step=<?= substr($key, 4) ?>" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-sky-600 font-bold transition-all text-xl" title="Input Baru">+</a>
+                        <?php if ($can_add): ?>
+                        <a href="add.php?step=<?= $step_num ?>" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-sky-600 font-bold transition-all text-xl" title="Input Baru">+</a>
                         <?php endif; ?>
                     </div>
                 </li>
@@ -85,7 +96,6 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
                 </li>
                 <?php endif; ?>
 
-                <?php if ($_SESSION['role'] == 'Admin_Entry'): ?>
                 <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] px-5 mt-10 mb-4">ADMINISTRASI</p>
                 <li>
                     <a href="add.php" 
@@ -94,7 +104,6 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
                         <span class="font-bold text-sm uppercase tracking-wide">Laporan Baru</span>
                     </a>
                 </li>
-                <?php endif; ?>
             </ul>
         </nav>
 
@@ -102,9 +111,13 @@ $role_name = ($_SESSION['role'] == 'Admin_Entry') ? 'Admin Data Entry QC' : 'Man
         <div class="p-6 bg-slate-100 border-t border-slate-200 m-4 rounded-3xl">
             <p class="text-[11px] font-black text-slate-500 uppercase mb-4 text-center tracking-[0.2em]">Pindah Simulasi Role</p>
             <div class="flex flex-col gap-3">
+                <a href="?switch_role=Pekerja_Lapangan" 
+                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-emerald-600 hover:border-emerald-200' ?>">
+                   👷 TEKNISI LAPANGAN
+                </a>
                 <a href="?switch_role=Admin_Entry" 
                    class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white shadow-sky-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-sky-600 hover:border-sky-200' ?>">
-                   👤 ENTRY ADMIN
+                   👤 ADMIN QC / LAB
                 </a>
                 <a href="?switch_role=Manager" 
                    class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-rose-600 hover:border-rose-200' ?>">

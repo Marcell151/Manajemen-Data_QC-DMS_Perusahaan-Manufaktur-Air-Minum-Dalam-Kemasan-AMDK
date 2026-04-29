@@ -100,7 +100,11 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Aktif Sebagai</p>
                     <p class="text-lg font-black text-slate-800 tracking-tight leading-none">
-                        <?= $_SESSION['role'] == 'Admin_Entry' ? 'Admin Entry' : 'Manajer Produksi' ?>
+                        <?php
+                            if($_SESSION['role'] == 'Pekerja_Lapangan') echo "Teknisi Lapangan";
+                            elseif($_SESSION['role'] == 'Admin_Entry') echo "Admin QC / Lab";
+                            else echo "Manajer Produksi";
+                        ?>
                     </p>
                 </div>
             </div>
