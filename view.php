@@ -69,11 +69,59 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            @page { margin: 0; size: auto; }
-            .no-print, .no-print *, nav, aside, header, .action-area, .sidebar-container, .mobile-topbar, .mobile-bottom-nav { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
-            body { background: white !important; padding: 0 !important; margin: 0 !important; }
-            #reportContent { display: block !important; border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; padding: 0.4in !important; transform: none !important; }
-            main { padding: 0 !important; margin: 0 !important; }
+            @page { 
+                margin: 1.5cm 1.5cm 2.5cm 1.5cm; 
+            }
+            .no-print, .no-print *, nav, aside, header, .action-area, .sidebar-container, .mobile-topbar, .mobile-bottom-nav, .mobile-action-bar { 
+                display: none !important; 
+                visibility: hidden !important; 
+                opacity: 0 !important; 
+                height: 0 !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            #reportContent { 
+                display: block !important; 
+                border: none !important; 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                width: 100% !important; 
+                padding: 0 !important; 
+                transform: none !important; 
+            }
+            main { 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            
+            /* Print Footer styling */
+            .print-footer-container {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                display: flex !important;
+                justify-content: space-between;
+                font-size: 8pt;
+                font-family: 'Times New Roman', serif;
+                border-top: 1px solid #000;
+                padding-top: 4px;
+                background: white;
+            }
+            .print-footer-left {
+                text-align: left;
+            }
+            .print-footer-right {
+                text-align: right;
+            }
+            .print-page-number::after {
+                content: counter(page);
+            }
         }
         .metadata-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .metadata-content.open { max-height: 2000px; }
@@ -112,28 +160,27 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
         <!-- MANAGER APPROVAL PANEL (Pindah Ke Atas - Digital Only) -->
         <?php if ($_SESSION['role'] == 'Manager' && $doc['jenis'] == 'Approval_Manager' && ($doc['approval_status'] == 'Waiting Approval' || $doc['status'] == 'Pending')): ?>
-            <div class="mb-12 bg-white rounded-3xl border-4 border-slate-900 overflow-hidden shadow-2xl no-print animate-pulse hover:animate-none transition-all">
-                <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <span class="text-3xl">⚖️</span>
-                        <div>
-                            <h3 class="text-lg font-black uppercase tracking-tight">Otorisasi Manajer Produksi</h3>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tinjau Scan Di Bawah Sebelum Memberikan Keputusan</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-4">
-                        <form method="POST" action="approve_action.php" class="inline">
-                            <input type="hidden" name="doc_id" value="<?= $id ?>">
-                            <input type="hidden" name="decision" value="Approved">
-                            <button type="submit" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-lg transition-all">✅ Approve Laporan</button>
-                        </form>
-                        <form method="POST" action="approve_action.php" class="inline">
-                            <input type="hidden" name="doc_id" value="<?= $id ?>">
-                            <input type="hidden" name="decision" value="Hold">
-                            <button type="submit" class="px-8 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase rounded-xl shadow-lg transition-all">✋ Hold / Tolak</button>
-                        </form>
+            <div class="mb-12 bg-white rounded-3xl border-4 border-slate-900 overflow-hidden shadow-2xl no-print transition-all">
+                <div class="bg-slate-900 p-6 text-white flex items-center gap-4">
+                    <span class="text-3xl">⚖️</span>
+                    <div>
+                        <h3 class="text-lg font-black uppercase tracking-tight">Otorisasi Manajer Produksi</h3>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tinjau Bukti Di Bawah Sebelum Memberikan Keputusan</p>
                     </div>
                 </div>
+                <form method="POST" action="approve_action.php" class="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
+                    <input type="hidden" name="doc_id" value="<?= $id ?>">
+                    
+                    <div>
+                        <label for="notes" class="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Keterangan / Catatan Approval (Wajib Diisi):</label>
+                        <textarea name="notes" id="notes" required placeholder="Tuliskan catatan/keterangan keputusan penyelesaian masalah di sini sebagai bukti audit..." class="w-full p-4 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 bg-white" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-3">
+                        <button type="submit" name="decision" value="Hold" class="px-8 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">✋ Hold / Tolak</button>
+                        <button type="submit" name="decision" value="Approved" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">✅ Approve Laporan</button>
+                    </div>
+                </form>
             </div>
         <?php endif; ?>
 
@@ -173,14 +220,21 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
         <!-- ACTION TOOLBAR - Desktop (hidden on mobile) -->
         <div class="mb-8 md:mb-12 flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 no-print action-area desktop-action-toolbar hidden md:flex">
+            <?php if ($doc['approval_status'] == 'Approved'): ?>
+                <button onclick="window.print()" class="w-full sm:w-auto justify-center px-8 md:px-12 py-4 md:py-5 bg-emerald-600 text-white text-xs md:text-sm font-black uppercase rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/30 flex items-center gap-3">
+                    <span class="text-2xl">🖨️</span> Cetak Dokumen Persetujuan Resmi
+                </button>
+            <?php endif; ?>
             <?php if (!empty($doc['file_path'])): ?>
                 <a href="<?= htmlspecialchars($doc['file_path']) ?>" download class="w-full sm:w-auto justify-center px-8 md:px-12 py-4 md:py-5 bg-blue-600 text-white text-xs md:text-sm font-black uppercase rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/30 flex items-center gap-3">
                     <span class="text-2xl">&#128229;</span> Unduh Dokumen Bukti (Asli)
                 </a>
             <?php else: ?>
-                <button onclick="window.print()" class="w-full sm:w-auto justify-center px-8 md:px-10 py-4 bg-white border-2 border-slate-200 text-slate-700 text-xs font-black uppercase rounded-2xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3">
-                    <span class="text-xl">&#128424;&#65039;</span> Cetak Ringkasan Digital
-                </button>
+                <?php if ($doc['approval_status'] != 'Approved'): ?>
+                    <button onclick="window.print()" class="w-full sm:w-auto justify-center px-8 md:px-10 py-4 bg-white border-2 border-slate-200 text-slate-700 text-xs font-black uppercase rounded-2xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3">
+                        <span class="text-xl">&#128424;&#65039;</span> Cetak Ringkasan Digital
+                    </button>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
 
@@ -189,7 +243,11 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
             <a href="index.php" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-600 font-black text-sm uppercase">
                 &#8592; Kembali
             </a>
-            <?php if (!empty($doc['file_path'])): ?>
+            <?php if ($doc['approval_status'] == 'Approved'): ?>
+                <button onclick="window.print()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase shadow-lg">
+                    🖨️ Cetak
+                </button>
+            <?php elseif (!empty($doc['file_path'])): ?>
                 <a href="<?= htmlspecialchars($doc['file_path']) ?>" download class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-black text-sm uppercase shadow-lg">
                     &#128229; Unduh
                 </a>
@@ -360,15 +418,15 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
             <table class="w-full border-b-2 border-black pb-2 mb-4">
                 <tr>
                     <td class="w-20 pb-2">
-                        <div class="w-12 h-12 bg-black text-white flex items-center justify-center text-2xl font-bold">MP</div>
+                        <div class="w-12 h-12 bg-blue-600 text-white flex items-center justify-center text-2xl font-black rounded-xl">MP</div>
                     </td>
-                    <td class="pb-2">
-                        <h1 class="text-xl font-bold uppercase leading-none">PT. MINERAL PURE INDONESIA</h1>
-                        <p class="text-[9px] font-bold uppercase mt-1">Kawasan Industri Jababeka, Blok C-14, Bekasi - Indonesia</p>
-                        <p class="text-[8px] mt-0.5 italic">Quality Control & Assurance Management System</p>
+                    <td class="pb-2 pl-2">
+                        <h1 class="text-xl font-bold uppercase leading-none text-slate-900">PT. MINERAL PURE INDONESIA</h1>
+                        <p class="text-[9px] font-bold uppercase mt-1 text-slate-500">Kawasan Industri Jababeka, Blok C-14, Bekasi - Indonesia</p>
+                        <p class="text-[8px] mt-0.5 italic text-sky-600">Quality Control & Assurance Management System</p>
                     </td>
                     <td class="text-right pb-2">
-                        <h2 class="text-[10px] font-bold uppercase tracking-widest border-b border-black inline-block mb-1">FORMULIR MUTU</h2>
+                        <h2 class="text-[10px] font-bold uppercase tracking-widest border-b border-black inline-block mb-1">FORMULIR PERSETUJUAN MUTU</h2>
                         <p class="text-[9px] font-bold mt-1">No: <?= htmlspecialchars($doc['no_dokumen'] ?? "NEW-DOC") ?></p>
                     </td>
                 </tr>
@@ -478,9 +536,21 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
             </table>
 
             <!-- FOOTER -->
-            <div class="mt-6 pt-2 border-t border-gray-200 text-[7px] text-gray-400 flex justify-between uppercase font-bold italic">
+            <div class="mt-6 pt-2 border-t border-gray-200 text-[7px] text-gray-400 flex justify-between uppercase font-bold italic print:hidden">
                 <span>QC-DMS Digital Integration System • Mineral Pure</span>
                 <span>Audit Metadata Sheet • Non-Othentic Reference</span>
+            </div>
+
+            <!-- FOOTER CETAK DINAMIS (Task 5: Dicetak oleh, Dibuat oleh, Waktu Pengesahan, Halaman) -->
+            <div class="hidden print:flex print-footer-container">
+                <div class="print-footer-left">
+                    <div>Dicetak oleh: <?= htmlspecialchars($role_name_map[$_SESSION['role']] ?? $_SESSION['role']) ?></div>
+                    <div>Dibuat oleh: <?= htmlspecialchars($doc['inspector'] ?? '-') ?></div>
+                </div>
+                <div class="print-footer-right">
+                    <div>Waktu Pengesahan: <?= htmlspecialchars($doc['approved_at'] ?? '-') ?></div>
+                    <div>Halaman: <span class="print-page-number"></span></div>
+                </div>
             </div>
         </div>
 

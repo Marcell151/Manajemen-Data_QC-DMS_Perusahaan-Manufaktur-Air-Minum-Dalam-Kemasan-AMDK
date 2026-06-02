@@ -1,24 +1,26 @@
 <?php
 require 'db.php';
 
-// Filter & Search
 $filter = $_GET['filter'] ?? null;
 $search = $_GET['search'] ?? null;
-$path = $_GET['path'] ?? 'QC_AMDK';
-
-// Switch Role Simulation
-if (isset($_GET['switch_role'])) {
-    $_SESSION['role'] = $_GET['switch_role'];
-    header("Location: index.php");
-    exit;
-}
-
-if (!isset($_SESSION['role'])) {
-    $_SESSION['role'] = 'Admin_Entry';
-}
+$status_filter = $_GET['status_filter'] ?? null;
+$start_date = $_GET['start_date'] ?? null;
+$end_date = $_GET['end_date'] ?? null;
 
 $query = "SELECT * FROM documents WHERE 1=1";
 $params = [];
+
+// Apply status filter or default (Active/Pending only)
+if ($status_filter === 'Approved') {
+    $query .= " AND (approval_status = 'Approved' OR status = 'Archived')";
+} elseif ($status_filter === 'Pending') {
+    $query .= " AND (status = 'Pending' OR approval_status = 'Waiting Approval')";
+} elseif ($status_filter === 'Hold') {
+    $query .= " AND (status = 'Hold' OR approval_status = 'Hold')";
+} else {
+    // Default: only display Pending/Aktif (non-archived)
+    $query .= " AND status != 'Archived'";
+}
 
 if ($filter == 'waiting') {
     $query .= " AND approval_status = 'Waiting Approval'";
@@ -41,15 +43,24 @@ if ($search) {
     $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]);
 }
 
+if (!empty($start_date)) {
+    $query .= " AND tanggal >= ?";
+    $params[] = $start_date;
+}
+if (!empty($end_date)) {
+    $query .= " AND tanggal <= ?";
+    $params[] = $end_date;
+}
+
 $query .= " ORDER BY tanggal DESC, id DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $files = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Stats
-$total_docs = $pdo->query("SELECT COUNT(*) FROM documents")->fetchColumn();
+// Stats (Only count active/pending documents, i.e., non-archived)
+$total_docs = $pdo->query("SELECT COUNT(*) FROM documents WHERE status != 'Archived'")->fetchColumn();
 $total_reject = $pdo->query("SELECT COUNT(*) FROM documents WHERE status = 'Reject'")->fetchColumn();
-$inspeksi_bulan_ini = $pdo->query("SELECT COUNT(*) FROM documents WHERE strftime('%m', tanggal) = strftime('%m', 'now')")->fetchColumn();
+$inspeksi_bulan_ini = $pdo->query("SELECT COUNT(*) FROM documents WHERE strftime('%m', tanggal) = strftime('%m', 'now') AND status != 'Archived'")->fetchColumn();
 $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_status = 'Waiting Approval'")->fetchColumn();
 ?>
 
@@ -190,15 +201,41 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
         </div>
 
         <!-- Controls Bar (Search + Filter) -->
-        <div class="mb-4 flex flex-col sm:flex-row gap-3">
-            <div class="flex flex-wrap gap-2">
-                <a href="index.php" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua</a>
-                <a href="index.php?filter=waiting" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Perlu Approval</a>
+        <form action="index.php" method="GET" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+            <input type="hidden" name="filter" value="<?= htmlspecialchars($filter ?? '') ?>">
+            
+            <div class="flex-grow grid grid-cols-1 sm:grid-cols-4 gap-4 w-full">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Cari Kata Kunci</label>
+                    <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari laporan, kode, produk..." class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Tanggal Mulai</label>
+                    <input type="date" name="start_date" value="<?= htmlspecialchars($start_date ?? '') ?>" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Tanggal Selesai</label>
+                    <input type="date" name="end_date" value="<?= htmlspecialchars($end_date ?? '') ?>" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Status Dokumen</label>
+                    <select name="status_filter" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                        <option value="">Semua Status</option>
+                        <option value="Pending" <?= $status_filter == 'Pending' ? 'selected' : '' ?>>Pending</option>
+                        <option value="Approved" <?= $status_filter == 'Approved' ? 'selected' : '' ?>>Approved</option>
+                        <option value="Hold" <?= $status_filter == 'Hold' ? 'selected' : '' ?>>Hold</option>
+                    </select>
+                </div>
             </div>
-            <form action="" method="GET" class="relative flex-grow">
-                <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari laporan, kode, produk..." class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:border-sky-500 outline-none w-full transition-all">
-                <span class="absolute left-3 top-3 text-slate-300 text-base">&#128269;</span>
-            </form>
+            <div class="flex gap-2 w-full md:w-auto">
+                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Filter</button>
+                <a href="index.php" class="w-full md:w-auto px-6 py-2.5 text-center bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black uppercase rounded-xl transition-all">Reset</a>
+            </div>
+        </form>
+
+        <div class="mb-4 flex flex-wrap gap-2">
+            <a href="index.php?status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua</a>
+            <a href="index.php?filter=waiting&status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Perlu Approval</a>
         </div>
 
         <!-- ============================================================ -->
@@ -225,6 +262,10 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                                         <p class="text-[10px] font-black text-slate-400 tracking-widest uppercase"><?= htmlspecialchars($file['no_dokumen']) ?></p>
                                         <span class="text-[10px] text-slate-300">•</span>
                                         <p class="text-[10px] font-bold text-sky-600 uppercase tracking-tighter"><?= str_replace('_', ' ', $file['produk']) ?></p>
+                                        <?php if (!empty($file['approved_at'])): ?>
+                                            <span class="text-[10px] text-slate-300">•</span>
+                                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Waktu Resolusi: <?= formatLeadTime($file['created_at'], $file['approved_at']) ?></p>
+                                        <?php endif; ?>
                                     </div>
                                 </a>
                             </td>
@@ -301,6 +342,12 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                             <span class="badge-pill badge-link">&#9729; Link</span>
                         <?php endif; ?>
                     </div>
+
+                    <?php if (!empty($file['approved_at'])): ?>
+                        <div class="p-2 bg-emerald-50 rounded-lg text-[10px] font-semibold text-emerald-800">
+                             Waktu Resolusi: <strong><?= formatLeadTime($file['created_at'], $file['approved_at']) ?></strong>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Bottom Row: Status + Action -->
                     <div class="card-bottom">

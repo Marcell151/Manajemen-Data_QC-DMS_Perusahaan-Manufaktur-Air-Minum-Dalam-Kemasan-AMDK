@@ -244,8 +244,17 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             <?php endif; ?>
         </div>
 
-        <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-5 md:p-12">
+        <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-5 md:p-12 mb-32">
             
+            <!-- Top Action Header (Tengah-Atas / Anti-Missclick) -->
+            <div class="flex justify-between items-center pb-6 mb-6 border-b border-slate-100 no-print">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Input Data Lapangan</p>
+                <div class="flex gap-3 w-full sm:w-auto justify-end">
+                    <a href="index.php" class="px-5 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-xl">Batal</a>
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-sky-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Kirim Laporan</button>
+                </div>
+            </div>
+
             <div class="form-grid <?= $is_mobile_mode ? 'flex flex-col gap-8' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
                 
                 <div class="space-y-6 md:space-y-8">
@@ -350,14 +359,14 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
 
                     <!-- File Upload -->
                     <div class="space-y-4">
-                        <label>Lampiran Bukti (Foto / PDF)</label>
+                        <label>Lampiran Bukti (Foto Kamera)</label>
                         <div class="camera-btn" onclick="document.getElementById('fileInput').click()" style="min-height:90px">
                             <span class="cam-icon text-4xl">&#128248;</span>
-                            <span class="cam-label text-sm font-black uppercase tracking-widest">Ambil Foto / Unggah Bukti</span>
-                            <p class="text-xs opacity-60 mt-1">Kamera tablet atau pilih dari galeri</p>
+                            <span class="cam-label text-sm font-black uppercase tracking-widest">Buka Kamera Tablet / Unggah Bukti</span>
+                            <p class="text-xs opacity-60 mt-1">Kamera tablet langsung aktif</p>
                         </div>
-                        <input type="file" name="dokumen_fisik" id="fileInput" accept="image/*,application/pdf" capture="environment" class="hidden" onchange="updateFileName(this)">
-                        <div id="fileStatus" class="text-center text-sm font-bold text-emerald-600 hidden py-2 bg-emerald-50 rounded-xl border border-emerald-200">&#9989; File Siap Diunggah</div>
+                        <input type="file" name="dokumen_fisik" id="fileInput" accept="image/*" capture="environment" class="hidden" onchange="updateFileName(this)">
+                        <div id="fileStatus" class="text-center text-sm font-bold text-emerald-600 hidden py-2 bg-emerald-50 rounded-xl border border-emerald-200">&#9989; Foto Siap Diunggah</div>
                         
                         <div class="pt-3 border-t border-slate-100">
                             <label class="text-[10px]">Atau Gunakan Tautan Cloud (G-Drive, dll)</label>

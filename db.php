@@ -58,7 +58,10 @@ try {
         parent_doc_id INTEGER,
         ph TEXT,
         tds TEXT,
-        kekeruhan TEXT
+        kekeruhan TEXT,
+        created_at DATETIME,
+        approved_at DATETIME,
+        archived_at DATETIME
     )";
     $pdo->exec($query);
 
@@ -76,7 +79,10 @@ try {
         'tds' => "TEXT",
         'kekeruhan' => "TEXT",
         'file_path' => "TEXT",
-        'external_link' => "TEXT"
+        'external_link' => "TEXT",
+        'created_at' => "DATETIME",
+        'approved_at' => "DATETIME",
+        'archived_at' => "DATETIME"
     ];
 
     foreach ($new_cols as $col => $type) {
@@ -84,6 +90,9 @@ try {
             $pdo->exec("ALTER TABLE documents ADD COLUMN $col $type");
         }
     }
+
+    // Retroactive update: isi created_at jika kosong berdasarkan tanggal
+    $pdo->exec("UPDATE documents SET created_at = tanggal || ' 08:00:00' WHERE created_at IS NULL");
 
     // Tambahkan Index jika belum ada (SQLite workaround untuk UNIQUE)
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_no_dokumen ON documents(no_dokumen)");
@@ -165,5 +174,34 @@ try {
 
 } catch (PDOException $e) {
     die("Kesalahan Database: " . $e->getMessage());
+}
+
+// Fungsi bantu untuk memformat selisih waktu Lead Time
+function formatLeadTime($created, $approved) {
+    if (empty($created) || empty($approved)) {
+        return '-';
+    }
+    $t1 = strtotime($created);
+    $t2 = strtotime($approved);
+    if ($t2 === false || $t1 === false || $t2 < $t1) {
+        return '0 Menit';
+    }
+    
+    $diff = $t2 - $t1;
+    $days = floor($diff / 86400);
+    $hours = floor(($diff % 86400) / 3600);
+    $minutes = floor(($diff % 3600) / 60);
+    
+    $result = [];
+    if ($days > 0) {
+        $result[] = $days . " Hari";
+    }
+    if ($hours > 0) {
+        $result[] = $hours . " Jam";
+    }
+    if ($minutes > 0 || empty($result)) {
+        $result[] = $minutes . " Menit";
+    }
+    return implode(" ", $result);
 }
 ?>

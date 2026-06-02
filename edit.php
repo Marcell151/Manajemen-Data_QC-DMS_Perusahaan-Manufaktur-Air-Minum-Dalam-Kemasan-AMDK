@@ -89,7 +89,16 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
             <p class="text-sm font-bold text-slate-500 mt-2">Hati-hati, perubahan data di sini akan tercatat dalam audit log sistem.</p>
         </div>
 
-        <form action="" method="POST" class="form-card">
+        <form action="" method="POST" class="form-card mb-32">
+            
+            <!-- Top Action Header (Tengah-Atas / Anti-Missclick) -->
+            <div class="flex justify-between items-center pb-6 mb-6 border-b border-slate-100 no-print">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Koreksi Data Laporan</p>
+                <div class="flex gap-3 w-full sm:w-auto justify-end">
+                    <a href="view.php?id=<?= $id ?>" class="px-5 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-xl">Batal</a>
+                    <button type="submit" class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Simpan Perubahan</button>
+                </div>
+            </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
                 <div class="space-y-10">

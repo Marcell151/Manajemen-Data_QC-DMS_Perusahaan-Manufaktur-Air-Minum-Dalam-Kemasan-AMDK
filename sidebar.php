@@ -206,9 +206,9 @@ $mob_page   = $current_page;
             <span class="nav-label">Baru</span>
         </a>
         <?php endif; ?>
-        <!-- Semua Laporan -->
-        <a href="index.php?filter=all" class="nav-item <?= ($mob_filter == 'all') ? 'active' : '' ?>">
-            <span class="nav-icon">📂</span>
+        <!-- Riwayat Arsip -->
+        <a href="archive.php" class="nav-item <?= ($mob_page == 'archive.php') ? 'active' : '' ?>">
+            <span class="nav-icon">📁</span>
             <span class="nav-label">Arsip</span>
         </a>
     </div>
@@ -283,6 +283,10 @@ $mob_page   = $current_page;
         <a href="add.php" onclick="toggleMobileSidebar()" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($current_page == 'add.php') ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
             <span class="text-xl">➕</span>
             <span class="font-bold text-sm">Laporan Baru</span>
+        </a>
+        <a href="archive.php" onclick="toggleMobileSidebar()" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($current_page == 'archive.php') ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
+            <span class="text-xl">📁</span>
+            <span class="font-bold text-sm">Riwayat Arsip</span>
         </a>
     </nav>
 
@@ -373,6 +377,13 @@ $mob_page   = $current_page;
                        class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= $current_page == 'add.php' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
                         <span class="text-lg">➕</span>
                         <span class="font-bold text-sm uppercase tracking-wide">Laporan Baru</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="archive.php" 
+                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= $current_page == 'archive.php' ? 'bg-sky-600 text-white shadow-xl shadow-sky-600/20' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
+                        <span class="text-lg">📁</span>
+                        <span class="font-bold text-sm uppercase tracking-wide">Riwayat Arsip</span>
                     </a>
                 </li>
             </ul>

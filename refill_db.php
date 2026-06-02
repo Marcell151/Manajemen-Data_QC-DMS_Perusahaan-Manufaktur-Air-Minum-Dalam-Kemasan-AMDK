@@ -78,11 +78,11 @@ $scenarios = [
     ],
 ];
 
-$stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, external_link, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, external_link, approval_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 foreach ($scenarios as $s) {
     $stmt->execute([
-        $s['no'], $s['nama'], $s['produk'], $s['jenis'], $today, 'Agus Setiawan', 'MC-01', 'Admin Data Entry QC', $s['status'], $s['deskripsi'] ?? '', $s['folder'], $s['p_id'] ?? null, $s['file'] ?? '', $s['link'] ?? '', $s['approval_status'] ?? '-'
+        $s['no'], $s['nama'], $s['produk'], $s['jenis'], $today, 'Agus Setiawan', 'MC-01', 'Admin Data Entry QC', $s['status'], $s['deskripsi'] ?? '', $s['folder'], $s['p_id'] ?? null, $s['file'] ?? '', $s['link'] ?? '', $s['approval_status'] ?? '-', $today . ' 08:00:00'
     ]);
 }
 
