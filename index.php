@@ -18,8 +18,8 @@ if ($status_filter === 'Approved') {
 } elseif ($status_filter === 'Hold') {
     $query .= " AND (status = 'Hold' OR approval_status = 'Hold')";
 } else {
-    // Default: only display Pending/Aktif (non-archived)
-    $query .= " AND status != 'Archived'";
+    // Default: only display active documents (not Archived or Rejected)
+    $query .= " AND status NOT IN ('Archived', 'Rejected')";
 }
 
 if ($filter == 'waiting') {
@@ -57,21 +57,88 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $files = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Stats (Only count active/pending documents, i.e., non-archived)
-$total_docs = $pdo->query("SELECT COUNT(*) FROM documents WHERE status != 'Archived'")->fetchColumn();
+// Stats (Only count active/pending documents, i.e., non-archived and non-rejected)
+$total_docs = $pdo->query("SELECT COUNT(*) FROM documents WHERE status NOT IN ('Archived', 'Rejected')")->fetchColumn();
 $total_reject = $pdo->query("SELECT COUNT(*) FROM documents WHERE status = 'Reject'")->fetchColumn();
-$inspeksi_bulan_ini = $pdo->query("SELECT COUNT(*) FROM documents WHERE strftime('%m', tanggal) = strftime('%m', 'now') AND status != 'Archived'")->fetchColumn();
+$inspeksi_bulan_ini = $pdo->query("SELECT COUNT(*) FROM documents WHERE strftime('%m', tanggal) = strftime('%m', 'now') AND status NOT IN ('Archived', 'Rejected')")->fetchColumn();
 $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_status = 'Waiting Approval'")->fetchColumn();
+
+// Grouping documents by step type for the pipeline view (only used when filter is null/empty)
+$jenis_to_step = [
+    'Catatan_Batch' => 'step1',
+    'Uji_Lab' => 'step2',
+    'Diagnosis_Mesin' => 'step3',
+    'Laporan_Perbaikan' => 'step4',
+    'Uji_Ulang' => 'step5',
+    'Approval_Manager' => 'step6'
+];
+
+$pipeline_data = [
+    'step1' => [],
+    'step2' => [],
+    'step3' => [],
+    'step4' => [],
+    'step5' => [],
+    'step6' => []
+];
+
+foreach ($files as $file) {
+    $s_key = $jenis_to_step[$file['jenis']] ?? null;
+    if ($s_key) {
+        $pipeline_data[$s_key][] = $file;
+    }
+}
+
+// Clean water color scheme mapping
+$theme_classes = [
+    'sky' => [
+        'header' => 'bg-sky-50/80 border-sky-100 text-sky-900',
+        'icon' => 'text-sky-600',
+        'border' => 'border-sky-200',
+        'badge' => 'bg-sky-100 text-sky-800'
+    ],
+    'blue' => [
+        'header' => 'bg-blue-50/80 border-blue-100 text-blue-900',
+        'icon' => 'text-blue-600',
+        'border' => 'border-blue-200',
+        'badge' => 'bg-blue-100 text-blue-800'
+    ],
+    'slate' => [
+        'header' => 'bg-slate-100/80 border-slate-200 text-slate-900',
+        'icon' => 'text-slate-600',
+        'border' => 'border-slate-300',
+        'badge' => 'bg-slate-200 text-slate-850'
+    ],
+    'cyan' => [
+        'header' => 'bg-cyan-50/80 border-cyan-100 text-cyan-900',
+        'icon' => 'text-cyan-600',
+        'border' => 'border-cyan-200',
+        'badge' => 'bg-cyan-100 text-cyan-800'
+    ],
+    'teal' => [
+        'header' => 'bg-teal-50/80 border-teal-100 text-teal-900',
+        'icon' => 'text-teal-600',
+        'border' => 'border-teal-200',
+        'badge' => 'bg-teal-100 text-teal-800'
+    ],
+    'emerald' => [
+        'header' => 'bg-emerald-50/80 border-emerald-100 text-emerald-900',
+        'icon' => 'text-emerald-600',
+        'border' => 'border-emerald-200',
+        'badge' => 'bg-emerald-100 text-emerald-800'
+    ]
+];
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Mutu - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
         :root {
             --primary: #0284c7;
@@ -79,70 +146,61 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
             --bg-main: #f8fafc;
         }
 
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
+        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        .stat-card { background: white; border-radius: 24px; border: 1px solid #e2e8f0; padding: 1.5rem; transition: all 0.2s; }
-        .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+        .stat-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 20px -5px rgba(0,0,0,0.04); }
         
         .btn-filter { padding: 0.5rem 1rem; border-radius: 12px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; transition: all 0.2s; }
         .btn-filter.active { background: var(--primary); color: white; }
-        .btn-filter:not(.active) { background: white; color: #64748b; border: 1px solid #e2e8f0; }
+        .btn-filter:not(.active) { background: white; color: #475569; border: 1px solid #cbd5e1; }
         .btn-filter:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
 
-        /* ---- MOBILE DOCUMENT CARD ---- */
-        .doc-card {
-            background: white;
-            border-radius: 20px;
+        .stage-box {
+            background: #fff;
+            border-radius: 24px;
             border: 1px solid #e2e8f0;
-            padding: 1rem 1.1rem;
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
+            min-height: 250px;
+            max-height: 600px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.01);
+            transition: border-color 0.2s;
+        }
+        .stage-box:hover {
+            border-color: #cbd5e1;
+        }
+        
+        .doc-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #f1f5f9;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
             transition: all 0.15s;
             text-decoration: none;
             color: inherit;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
         }
-        .doc-card:active { transform: scale(0.98); background: #f8fafc; }
-        .doc-card .card-title { font-size: 0.95rem; font-weight: 700; color: #1e293b; line-height: 1.3; }
-        .doc-card .card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
-        .doc-card .card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-        .doc-card .open-btn { 
-            padding: 0.5rem 1.2rem; 
-            background: #0284c7;
-            color: white; 
-            border-radius: 12px; 
-            font-size: 0.75rem; 
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        .doc-card:hover { 
+            transform: translateY(-2px); 
+            border-color: #0284c7; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         }
+        .doc-card:active { 
+            transform: scale(0.98); 
+        }
+
         .badge-pill {
             padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 800;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 750;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-        .badge-step { background: #f1f5f9; color: #64748b; }
-        .badge-file { background: #f1f5f9; color: #64748b; }
-        .badge-link { background: #e0f2fe; color: #0284c7; }
-        .badge-passed { background: #d1fae5; color: #047857; }
-        .badge-reject { background: #fee2e2; color: #b91c1c; }
-        .badge-waiting { background: #fef3c7; color: #b45309; }
-
-        /* Hide/show based on screen size */
-        @media (max-width: 767px) {
-            .desktop-table-area { display: none !important; }
-            .mobile-cards-area { display: flex !important; }
-            /* Compact stat cards on mobile */
-            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
-            .stat-card { padding: 1rem !important; border-radius: 18px !important; }
-            .stat-card h3 { font-size: 2rem !important; }
-        }
-        @media (min-width: 768px) {
-            .mobile-cards-area { display: none !important; }
+            letter-spacing: 0.02em;
         }
     </style>
 </head>
@@ -151,21 +209,23 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
 
     <div class="p-4 max-w-7xl mx-auto">
         <!-- Header Section -->
-        <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-                <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 drop-shadow-sm">Ringkasan Mutu</h1>
-                <p class="text-slate-500 font-medium mt-1 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-sky-500 rounded-full animate-pulse"></span>
-                    PT. Mineral Pure Indonesia • Unit Manufaktur
+                <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">Ringkasan Mutu</h1>
+                <p class="text-slate-600 font-semibold mt-1 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 bg-sky-500 rounded-full animate-pulse"></span>
+                    PT. Mineral Pure Indonesia &bull; Unit Manufaktur Air Minum Dalam Kemasan
                 </p>
             </div>
-            <div class="flex items-center gap-4 bg-white/80 backdrop-blur-md p-3 pr-8 rounded-3xl border border-white shadow-xl shadow-slate-200/50">
-                <div class="w-14 h-14 bg-gradient-to-br from-sky-400 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-200">
-                    💧
+            <div class="flex items-center gap-4 bg-white p-3 pr-8 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="w-12 h-12 bg-gradient-to-br from-sky-400 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-100">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"></path>
+                    </svg>
                 </div>
                 <div>
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Aktif Sebagai</p>
-                    <p class="text-lg font-black text-slate-800 tracking-tight leading-none">
+                    <p class="text-xs font-black uppercase tracking-wider text-slate-500 mb-0.5">Aktif Sebagai</p>
+                    <p class="text-base font-black text-slate-800 tracking-tight leading-none">
                         <?php
                             if($_SESSION['role'] == 'Pekerja_Lapangan') echo "Teknisi Lapangan";
                             elseif($_SESSION['role'] == 'Admin_Entry') echo "Admin QC / Lab";
@@ -177,49 +237,119 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
         </div>
 
         <!-- Stat Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12 stat-grid">
-            <div class="stat-card border-l-4 border-l-sky-500 group">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-sky-500 transition-colors">Total</p>
-                <h3 class="text-4xl font-extrabold text-slate-900"><?= $total_docs ?></h3>
-                <p class="text-[9px] text-slate-400 mt-1 font-bold uppercase tracking-tighter">Laporan</p>
+        <?php if (!$filter): ?>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card border-l-4 border-l-sky-500">
+                <p class="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Total Aktif</p>
+                <h3 class="text-3xl font-extrabold text-slate-900"><?= $total_docs ?></h3>
+                <p class="text-xs text-slate-650 mt-1 font-bold uppercase">Dokumen Proses</p>
             </div>
-            <div class="stat-card border-emerald-100 bg-emerald-50/20 border-l-4 border-l-emerald-500 group">
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lolos</p>
-                <h3 class="text-4xl font-extrabold text-emerald-700"><?= $inspeksi_bulan_ini ?></h3>
-                <p class="text-[9px] text-emerald-600/50 mt-1 font-bold uppercase tracking-tighter">Bulan Ini</p>
+            <div class="stat-card border-l-4 border-l-emerald-500 bg-emerald-50/10">
+                <p class="text-xs font-black text-emerald-800 uppercase tracking-widest mb-1">Lolos Uji</p>
+                <h3 class="text-3xl font-extrabold text-emerald-700"><?= $inspeksi_bulan_ini ?></h3>
+                <p class="text-xs text-emerald-750 mt-1 font-bold uppercase">Bulan Ini</p>
             </div>
-            <div class="stat-card border-rose-100 bg-rose-50/20 border-l-4 border-l-rose-500 group">
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Reject</p>
-                <h3 class="text-4xl font-extrabold text-rose-700"><?= $total_reject ?></h3>
-                <p class="text-[9px] text-rose-600/50 mt-1 font-bold uppercase tracking-tighter">Tindak Lanjut</p>
+            <div class="stat-card border-l-4 border-l-rose-500 bg-rose-50/10">
+                <p class="text-xs font-black text-rose-800 uppercase tracking-widest mb-1">Reject Lab</p>
+                <h3 class="text-3xl font-extrabold text-rose-700"><?= $total_reject ?></h3>
+                <p class="text-xs text-rose-750 mt-1 font-bold uppercase">Butuh Tindak Lanjut</p>
             </div>
-            <div class="stat-card border-amber-100 bg-amber-50/20 border-l-4 border-l-amber-500 group">
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Approval</p>
-                <h3 class="text-4xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
-                <p class="text-[9px] text-amber-600/50 mt-1 font-bold uppercase tracking-tighter">Menunggu</p>
+            <div class="stat-card border-l-4 border-l-amber-500 bg-amber-50/10">
+                <p class="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">Approval</p>
+                <h3 class="text-3xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
+                <p class="text-xs text-amber-800 mt-1 font-bold uppercase">Menunggu Otorisasi</p>
             </div>
         </div>
+        <?php else: 
+            // Step-specific dynamic stats
+            $step_info = $steps_config[$filter] ?? null;
+            $step_files = $pipeline_data[$filter] ?? [];
+            if ($filter === 'waiting') {
+                $total_step = $waiting_approval;
+            } else {
+                $total_step = count($step_files);
+            }
+            
+            // Calculate step-specific totals
+            $step_approved = 0;
+            $step_pending = 0;
+            $step_rejected = 0;
+            $step_passed = 0;
+            
+            // If waiting filter is active, populate files from the filtered view
+            $files_to_scan = ($filter === 'waiting') ? $files : $step_files;
+            
+            foreach ($files_to_scan as $f) {
+                if ($f['jenis'] == 'Uji_Lab' || $f['jenis'] == 'Uji_Ulang') {
+                    if ($f['status_mutu'] == 'Passed' || $f['status_mutu'] == 'Lolos') {
+                        $step_passed++;
+                    } else {
+                        $step_rejected++;
+                    }
+                }
+                if ($f['jenis'] == 'Diagnosis_Mesin' || $f['jenis'] == 'Approval_Manager') {
+                    if ($f['approval_status'] == 'Approved') {
+                        $step_approved++;
+                    } elseif ($f['approval_status'] == 'Rejected') {
+                        $step_rejected++;
+                    } else {
+                        $step_pending++;
+                    }
+                }
+            }
+        ?>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card border-l-4 border-l-sky-500 flex flex-col justify-center">
+                <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Total Laporan Tahap Ini</p>
+                <h3 class="text-3xl font-extrabold text-slate-900"><?= $total_step ?></h3>
+                <p class="text-xs text-slate-650 mt-1 font-bold uppercase">Aktif &amp; Terfilter</p>
+            </div>
+            <?php if ($filter == 'step2' || $filter == 'step5'): ?>
+                <div class="stat-card border-l-4 border-l-emerald-500 bg-emerald-50/10 flex flex-col justify-center">
+                    <p class="text-xs font-black text-emerald-800 uppercase tracking-wider mb-1">Mutu Passed</p>
+                    <h3 class="text-3xl font-extrabold text-emerald-700"><?= $step_passed ?></h3>
+                    <p class="text-xs text-emerald-750 mt-1 font-bold uppercase">Memenuhi Standard</p>
+                </div>
+                <div class="stat-card border-l-4 border-l-rose-500 bg-rose-50/10 flex flex-col justify-center">
+                    <p class="text-xs font-black text-rose-800 uppercase tracking-wider mb-1">Mutu Reject</p>
+                    <h3 class="text-3xl font-extrabold text-rose-700"><?= $step_rejected ?></h3>
+                    <p class="text-xs text-rose-750 mt-1 font-bold uppercase">Butuh Tindak Lanjut</p>
+                </div>
+            <?php elseif ($filter == 'step3' || $filter == 'step6' || $filter == 'waiting'): ?>
+                <div class="stat-card border-l-4 border-l-emerald-500 bg-emerald-50/10 flex flex-col justify-center">
+                    <p class="text-xs font-black text-emerald-800 uppercase tracking-wider mb-1">Approved</p>
+                    <h3 class="text-3xl font-extrabold text-emerald-700"><?= $step_approved ?></h3>
+                    <p class="text-xs text-emerald-750 mt-1 font-bold uppercase">Telah Diotorisasi</p>
+                </div>
+                <div class="stat-card border-l-4 border-l-amber-500 bg-amber-50/10 flex flex-col justify-center">
+                    <p class="text-xs font-black text-amber-800 uppercase tracking-wider mb-1">Pending Approval</p>
+                    <h3 class="text-3xl font-extrabold text-amber-700"><?= $step_pending ?></h3>
+                    <p class="text-xs text-amber-800 mt-1 font-bold uppercase">Menunggu Otorisasi</p>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
         <!-- Controls Bar (Search + Filter) -->
-        <form action="index.php" method="GET" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+        <form action="index.php" method="GET" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
             <input type="hidden" name="filter" value="<?= htmlspecialchars($filter ?? '') ?>">
             
             <div class="flex-grow grid grid-cols-1 sm:grid-cols-4 gap-4 w-full">
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Cari Kata Kunci</label>
-                    <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari laporan, kode, produk..." class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Cari Kata Kunci</label>
+                    <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Nama, kode, produk..." class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:border-sky-500 focus:bg-white outline-none transition-all">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Tanggal Mulai</label>
-                    <input type="date" name="start_date" value="<?= htmlspecialchars($start_date ?? '') ?>" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Tanggal Mulai</label>
+                    <input type="date" name="start_date" value="<?= htmlspecialchars($start_date ?? '') ?>" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:border-sky-500 focus:bg-white outline-none transition-all">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Tanggal Selesai</label>
-                    <input type="date" name="end_date" value="<?= htmlspecialchars($end_date ?? '') ?>" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Tanggal Selesai</label>
+                    <input type="date" name="end_date" value="<?= htmlspecialchars($end_date ?? '') ?>" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:border-sky-500 focus:bg-white outline-none transition-all">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Status Dokumen</label>
-                    <select name="status_filter" class="w-full px-4 py-2.5 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:border-sky-500 focus:bg-white outline-none transition-all">
+                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Status Dokumen</label>
+                    <select name="status_filter" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:border-sky-500 focus:bg-white outline-none transition-all">
                         <option value="">Semua Status</option>
                         <option value="Pending" <?= $status_filter == 'Pending' ? 'selected' : '' ?>>Pending</option>
                         <option value="Approved" <?= $status_filter == 'Approved' ? 'selected' : '' ?>>Approved</option>
@@ -228,149 +358,241 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                 </div>
             </div>
             <div class="flex gap-2 w-full md:w-auto">
-                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Filter</button>
-                <a href="index.php" class="w-full md:w-auto px-6 py-2.5 text-center bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black uppercase rounded-xl transition-all">Reset</a>
+                <button type="submit" class="w-full md:w-auto px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black uppercase rounded-xl transition-all shadow-sm">Filter</button>
+                <a href="index.php" class="w-full md:w-auto px-6 py-2 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl transition-all border border-slate-200">Reset</a>
             </div>
         </form>
 
-        <div class="mb-4 flex flex-wrap gap-2">
-            <a href="index.php?status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua</a>
-            <a href="index.php?filter=waiting&status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Perlu Approval</a>
+        <!-- Sub Filter Bar -->
+        <div class="mb-6 flex flex-wrap gap-2">
+            <a href="index.php?status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua Tahap</a>
+            <a href="index.php?filter=waiting&status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Butuh Approval</a>
         </div>
 
         <!-- ============================================================ -->
-        <!-- DESKTOP TABLE VIEW (hidden on mobile) -->
+        <!-- PIPELINE / STAGE BOXES VIEW (100% Responsive Grid) -->
         <!-- ============================================================ -->
-        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden desktop-table-area">
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[800px]">
-                <thead>
-                    <tr class="bg-slate-50/50">
-                        <th class="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Laporan</th>
-                        <th class="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tahapan</th>
-                        <th class="px-8 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                        <th class="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Opsi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <?php foreach ($files as $file): ?>
-                        <tr class="hover:bg-sky-50/30 transition-colors">
-                            <td class="px-8 py-6">
-                                <a href="view.php?id=<?= $file['id'] ?>" class="block group">
-                                    <p class="font-bold text-slate-800 text-base group-hover:text-sky-600 transition-colors"><?= htmlspecialchars($file['nama_dokumen']) ?></p>
-                                    <div class="flex items-center gap-3 mt-1">
-                                        <p class="text-[10px] font-black text-slate-400 tracking-widest uppercase"><?= htmlspecialchars($file['no_dokumen']) ?></p>
-                                        <span class="text-[10px] text-slate-300">•</span>
-                                        <p class="text-[10px] font-bold text-sky-600 uppercase tracking-tighter"><?= str_replace('_', ' ', $file['produk']) ?></p>
-                                        <?php if (!empty($file['approved_at'])): ?>
-                                            <span class="text-[10px] text-slate-300">•</span>
-                                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Waktu Resolusi: <?= formatLeadTime($file['created_at'], $file['approved_at']) ?></p>
-                                        <?php endif; ?>
-                                    </div>
-                                </a>
-                            </td>
-                            <td class="px-8 py-6">
-                                <div class="flex items-center gap-2">
-                                    <span class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-                                        <?= str_replace('_', ' ', $file['jenis']) ?>
-                                    </span>
-                                    <?php if (!empty($file['file_path'])): ?>
-                                        <span class="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase tracking-tighter">&#128196; FILE</span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($file['external_link'])): ?>
-                                        <span class="flex items-center gap-1 px-2 py-1 bg-sky-100 rounded text-[8px] font-black text-sky-600 uppercase tracking-tighter">&#9729;&#65039; LINK</span>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                <?php if ($file['jenis'] == 'Approval_Manager'): ?>
-                                    <span class="px-3 py-1.5 <?= $file['approval_status'] == 'Approved' ? 'bg-emerald-600' : 'bg-amber-500' ?> text-white rounded-full text-[9px] font-black uppercase tracking-widest italic shadow-sm">
-                                        <?= $file['approval_status'] ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="px-4 py-1.5 <?= ($file['status'] == 'Lolos' || $file['status'] == 'Passed') ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200' ?> border rounded-full text-[10px] font-black uppercase">
-                                        <?= ($file['status'] == 'Lolos' || $file['status'] == 'Passed') ? '✓ LOLOS' : '✗ REJECT' ?>
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="px-8 py-6 text-right">
-                                <a href="view.php?id=<?= $file['id'] ?>" class="text-[10px] font-black text-sky-600 hover:bg-sky-600 hover:text-white px-4 py-2 border-2 border-sky-600 rounded-xl transition-all">BUKA</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <?php if ($filter && $filter !== 'waiting'): 
+            // Focused step view
+            $step_info = $steps_config[$filter] ?? null;
+            $step_files = $pipeline_data[$filter] ?? [];
+            $theme = $theme_classes[$step_info['color']] ?? $theme_classes['sky'];
+        ?>
+            <!-- Focused Header with clear return button -->
+            <div class="mb-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-black px-2.5 py-1 rounded bg-slate-100 text-slate-700"><?= $step_info['num'] ?></span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center <?= $theme['header'] ?>">
+                        <svg class="w-5 h-5 <?= $theme['icon'] ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <?= $step_info['svg'] ?>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800"><?= $step_info['title'] ?></h2>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Menampilkan dokumen pada tahap ini saja</p>
+                    </div>
+                </div>
+                <a href="index.php" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl border border-slate-200 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Tampilkan Semua Tahapan
+                </a>
             </div>
 
-            <?php if (empty($files)): ?>
-                <div class="py-20 text-center bg-slate-50/50">
-                    <p class="text-4xl mb-4">&#129416;</p>
-                    <p class="text-xs font-black text-slate-300 uppercase tracking-widest">Tidak Ada Laporan Yang Ditemukan</p>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- MOBILE CARD VIEW (hidden on desktop) -->
-        <!-- ============================================================ -->
-        <div class="mobile-cards-area flex-col gap-3" style="display:none">
-            <?php if (empty($files)): ?>
-                <div class="py-16 text-center bg-white rounded-3xl border border-slate-200">
-                    <p class="text-5xl mb-3">&#129416;</p>
-                    <p class="text-sm font-black text-slate-300 uppercase tracking-widest">Tidak Ada Laporan</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($files as $file): 
-                    $is_passed = ($file['status'] == 'Lolos' || $file['status'] == 'Passed');
-                    $is_approval = ($file['jenis'] == 'Approval_Manager');
-                    $is_approved = ($file['approval_status'] == 'Approved');
-                    $is_waiting  = ($file['approval_status'] == 'Waiting Approval');
-                ?>
-                <a href="view.php?id=<?= $file['id'] ?>" class="doc-card">
-                    <!-- Top Row: Document Name -->
-                    <div class="card-title"><?= htmlspecialchars($file['nama_dokumen']) ?></div>
-                    
-                    <!-- Meta Row: Code + Type -->
-                    <div class="card-meta">
-                        <span class="badge-pill badge-step"><?= str_replace('_', ' ', $file['jenis']) ?></span>
-                        <span style="color:#cbd5e1;font-size:10px;">•</span>
-                        <span style="font-size:0.7rem;font-weight:700;color:#0284c7;text-transform:uppercase"><?= str_replace('_', ' ', $file['produk']) ?></span>
-                        <?php if (!empty($file['file_path'])): ?>
-                            <span class="badge-pill badge-file">&#128196; File</span>
-                        <?php endif; ?>
-                        <?php if (!empty($file['external_link'])): ?>
-                            <span class="badge-pill badge-link">&#9729; Link</span>
-                        <?php endif; ?>
+            <!-- List of documents for this specific step -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
+                <?php if (empty($step_files)): ?>
+                    <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-200 p-8">
+                        <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-sm font-black text-slate-400 uppercase tracking-wider">Tidak ada dokumen di tahap ini</p>
                     </div>
+                <?php else: ?>
+                    <?php foreach ($step_files as $file): ?>
+                        <?= renderDocumentCard($file, $pdo) ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
-                    <?php if (!empty($file['approved_at'])): ?>
-                        <div class="p-2 bg-emerald-50 rounded-lg text-[10px] font-semibold text-emerald-800">
-                             Waktu Resolusi: <strong><?= formatLeadTime($file['created_at'], $file['approved_at']) ?></strong>
+        <?php elseif ($filter === 'waiting'): 
+            // Focused waiting approval view
+        ?>
+            <div class="mb-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Menunggu Otorisasi Manajer</h2>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Menampilkan dokumen Diagnosis Mesin (03) dan Approval Final (06) yang menunggu approval</p>
+                    </div>
+                </div>
+                <a href="index.php" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl border border-slate-200 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Tampilkan Semua Tahapan
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
+                <?php if (empty($files)): ?>
+                    <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-200 p-8">
+                        <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        <p class="text-sm font-black text-slate-400 uppercase tracking-wider">Tidak ada dokumen yang butuh approval saat ini</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($files as $file): ?>
+                        <?= renderDocumentCard($file, $pdo) ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+        <?php else: 
+            // Default Overview: Grid of 6 Pipeline stages (3x2 on desktop, vertical list on mobile)
+        ?>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
+                <?php foreach ($steps_config as $s_id => $step): 
+                    $step_files = $pipeline_data[$s_id] ?? [];
+                    $theme = $theme_classes[$step['color']] ?? $theme_classes['sky'];
+                    $count = count($step_files);
+                ?>
+                    <div class="stage-box p-4 flex flex-col gap-4">
+                        <!-- Stage Box Header -->
+                        <div class="p-3.5 rounded-2xl flex items-center justify-between border <?= $theme['header'] ?>">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-black px-1.5 py-0.5 rounded bg-white/40"><?= $step['num'] ?></span>
+                                <svg class="w-4 h-4 flex-shrink-0 <?= $theme['icon'] ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <?= $step['svg'] ?>
+                                </svg>
+                                <span class="font-bold text-[13px] uppercase tracking-wide leading-none"><?= $step['title'] ?></span>
+                            </div>
+                            <span class="text-xs font-black px-2 py-0.5 rounded-full <?= $theme['badge'] ?>">
+                                <?= $count ?>
+                            </span>
                         </div>
-                    <?php endif; ?>
 
-                    <!-- Bottom Row: Status + Action -->
-                    <div class="card-bottom">
-                        <div style="display:flex;flex-direction:column;gap:2px">
-                            <span style="font-size:0.65rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em"><?= htmlspecialchars($file['no_dokumen']) ?></span>
-                            <?php if ($is_approval): ?>
-                                <span class="badge-pill <?= $is_approved ? 'badge-passed' : ($is_waiting ? 'badge-waiting' : 'badge-reject') ?>">
-                                    <?= $is_approved ? '✓ Approved' : ($is_waiting ? '⏳ Waiting' : $file['approval_status']) ?>
-                                </span>
+                        <!-- Document List in Stage (Scrollable if overflowing) -->
+                        <div class="flex-grow overflow-y-auto space-y-3 pr-1" style="max-height: 420px;">
+                            <?php if (empty($step_files)): ?>
+                                <div class="py-10 text-center text-slate-500 flex flex-col items-center justify-center h-full">
+                                    <svg class="w-8 h-8 text-slate-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                    </svg>
+                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Kosong</p>
+                                </div>
                             <?php else: ?>
-                                <span class="badge-pill <?= $is_passed ? 'badge-passed' : 'badge-reject' ?>">
-                                    <?= $is_passed ? '✓ LOLOS' : '✗ REJECT' ?>
-                                </span>
+                                <?php foreach ($step_files as $file): ?>
+                                    <?= renderDocumentCard($file, $pdo) ?>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
-                        <span class="open-btn">BUKA</span>
                     </div>
-                </a>
                 <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
     </main>
     </div>
     </div>
 </body>
 </html>
+
+<?php
+/**
+ * Helper function to render a document card with clean AMDK styling and high-contrast text.
+ */
+function renderDocumentCard($file, $pdo) {
+    ob_start();
+    ?>
+    <a href="view.php?id=<?= $file['id'] ?>" class="doc-card">
+        <!-- Document Title -->
+        <p class="font-bold text-slate-800 text-sm leading-snug hover:text-sky-600 transition-colors">
+            <?= htmlspecialchars($file['nama_dokumen']) ?>
+        </p>
+        
+        <!-- Metadata row -->
+        <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                <?= htmlspecialchars($file['no_dokumen']) ?>
+            </span>
+            <span class="text-xs font-black text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded uppercase border border-sky-100">
+                <?= str_replace('_', ' ', $file['produk']) ?>
+            </span>
+            <?php if (!empty($file['file_path'])): ?>
+                <span class="text-xs font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    File
+                </span>
+            <?php endif; ?>
+            <?php if (!empty($file['external_link'])): ?>
+                <span class="text-xs font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    Link
+                </span>
+            <?php endif; ?>
+        </div>
+
+        <!-- Status and details -->
+        <div class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
+            <!-- Left: status badge -->
+            <div>
+                <?php 
+                $badge_shown = false;
+                if ($file['jenis'] == 'Uji_Lab' || $file['jenis'] == 'Uji_Ulang') {
+                    $is_passed = ($file['status_mutu'] == 'Passed' || $file['status_mutu'] == 'Lolos');
+                    $bg_class = $is_passed ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200';
+                    $label = $is_passed ? 'Mutu Passed' : 'Mutu Reject';
+                    echo "<span class='px-2 py-0.5 border rounded-full text-xs font-bold uppercase tracking-wider $bg_class'>$label</span>";
+                    $badge_shown = true;
+                }
+
+                if ($file['jenis'] == 'Diagnosis_Mesin' || $file['jenis'] == 'Approval_Manager') {
+                    $status_app = $file['approval_status'] ?? 'Waiting Approval';
+                    if ($status_app == 'Approved') {
+                        $bg_class = 'bg-emerald-600 text-white border-emerald-700';
+                    } elseif ($status_app == 'Rejected') {
+                        $bg_class = 'bg-rose-600 text-white border-rose-700';
+                    } elseif ($status_app == 'Hold') {
+                        $bg_class = 'bg-amber-500 text-white border-amber-600';
+                    } else {
+                        $bg_class = 'bg-amber-100 text-amber-900 border-amber-200';
+                    }
+                    echo "<span class='px-2 py-0.5 border rounded-full text-xs font-bold uppercase tracking-wider $bg_class'>$status_app</span>";
+                    $badge_shown = true;
+                }
+                
+                if (!$badge_shown) {
+                    echo "<span class='px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-xs font-bold uppercase tracking-wider'>Logged</span>";
+                }
+                ?>
+            </div>
+
+            <!-- Right: date -->
+            <span class="text-xs font-bold text-slate-500">
+                <?= htmlspecialchars($file['tanggal']) ?>
+            </span>
+        </div>
+
+        <!-- Downtime or Lead Time if approved -->
+        <?php if ($file['jenis'] == 'Approval_Manager' && !empty($file['approved_at'])): ?>
+            <div class="mt-1.5 p-1.5 bg-emerald-50/50 rounded-lg text-xs font-bold text-emerald-800 border border-emerald-100 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Downtime: <?= getRepairDowntime($file, $pdo) ?></span>
+            </div>
+        <?php elseif (!empty($file['approved_at'])): ?>
+            <div class="mt-1.5 p-1.5 bg-emerald-50/50 rounded-lg text-xs font-bold text-emerald-800 border border-emerald-100 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Lead Time: <?= formatLeadTime($file['created_at'], $file['approved_at']) ?></span>
+            </div>
+        <?php endif; ?>
+    </a>
+    <?php
+    return ob_get_clean();
+}
+?>

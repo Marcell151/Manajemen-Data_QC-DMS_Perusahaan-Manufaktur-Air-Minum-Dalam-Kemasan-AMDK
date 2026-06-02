@@ -23,7 +23,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $tanggal = $_POST['tanggal'];
     $inspector = $_POST['inspector'];
     $machine_id = $_POST['machine_id'] ?? '-';
-    $status = $_POST['status'];
+    $status_mutu = $_POST['status_mutu'] ?? 'Passed';
+    if ($jenis !== 'Uji_Lab' && $jenis !== 'Uji_Ulang') {
+        $status_mutu = 'Passed';
+    }
+    $status = $status_mutu;
     $external_link = $_POST['external_link'] ?? '';
     $deskripsi = $_POST['deskripsi'] ?? '';
     
@@ -43,12 +47,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $sql = "UPDATE documents SET 
             nama_dokumen = ?, produk = ?, jenis = ?, tanggal = ?, 
-            inspector = ?, machine_id = ?, status = ?, external_link = ?, deskripsi = ?, 
+            inspector = ?, machine_id = ?, status = ?, status_mutu = ?, external_link = ?, deskripsi = ?, 
             folder_path = ?, ph = ?, tds = ?, kekeruhan = ?
             WHERE id = ?";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $status, $external_link, $deskripsi, $new_folder_path, $ph, $tds, $kekeruhan, $id]);
+    $stmt->execute([$nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $status, $status_mutu, $external_link, $deskripsi, $new_folder_path, $ph, $tds, $kekeruhan, $id]);
 
     header("Location: view.php?id=" . $id);
     exit;
@@ -67,44 +71,49 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
     <title>Edit Dokumen QC - <?= htmlspecialchars($doc['nama_dokumen']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .sidebar-container { height: 100vh; position: sticky; top: 0; }
         .form-card { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
-        .btn-save { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 16px 32px; border-radius: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.4); }
-        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 15px 35px -5px rgba(2, 132, 199, 0.5); }
-        label { display: block; font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
-        input[type="text"], input[type="date"], select, textarea, input[type="url"], input[type="number"] { width: 100%; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 16px; padding: 16px 20px; font-size: 14px; font-weight: 700; color: #334155; transition: all 0.3s ease; outline: none; }
-        input:focus, select:focus, textarea:focus { border-color: #0ea5e9; background: white; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1); }
+        .btn-save { background: #0f172a; color: white; padding: 16px 32px; border-radius: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s ease; cursor: pointer; border: none; }
+        .btn-save:hover { background: #0284c7; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2); }
+        label { display: block; font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+        input[type="text"], input[type="date"], select, textarea, input[type="url"], input[type="number"] { width: 100%; background: #fdfdfd; border: 2px solid #cbd5e1; border-radius: 16px; padding: 16px 20px; font-size: 14px; font-weight: 700; color: #1e293b; transition: all 0.3s ease; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: #0284c7; background: white; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); }
+        
+        @media (max-width: 767px) {
+            .form-card { border-radius: 20px !important; padding: 1.5rem !important; }
+            .btn-save { font-size: 1rem !important; padding: 1.1rem !important; border-radius: 16px !important; }
+        }
     </style>
 </head>
-<body class="text-slate-800">
+<body class="text-slate-800 antialiased bg-slate-50">
 
     <?php $current_page = 'index.php'; include 'sidebar.php'; ?>
 
     <div class="p-4 md:p-8 max-w-6xl mx-auto w-full">
         <div class="mb-10">
-            <div class="inline-block px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-[10px] font-black uppercase tracking-widest mb-4 border border-amber-200">Mode Koreksi Data</div>
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 drop-shadow-sm">Edit Laporan: <?= htmlspecialchars($doc['no_dokumen']) ?></h1>
-            <p class="text-sm font-bold text-slate-500 mt-2">Hati-hati, perubahan data di sini akan tercatat dalam audit log sistem.</p>
+            <div class="inline-block px-4 py-2 bg-amber-100 text-amber-900 rounded-xl text-xs font-black uppercase tracking-widest mb-4 border border-amber-250">Mode Koreksi Data</div>
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">Edit Laporan: <?= htmlspecialchars($doc['no_dokumen']) ?></h1>
+            <p class="text-sm font-bold text-slate-650 mt-2">Hati-hati, perubahan data di sini akan tercatat dalam audit log sistem.</p>
         </div>
 
         <form action="" method="POST" class="form-card mb-32">
             
-            <!-- Top Action Header (Tengah-Atas / Anti-Missclick) -->
-            <div class="flex justify-between items-center pb-6 mb-6 border-b border-slate-100 no-print">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Koreksi Data Laporan</p>
-                <div class="flex gap-3 w-full sm:w-auto justify-end">
-                    <a href="view.php?id=<?= $id ?>" class="px-5 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-xl">Batal</a>
-                    <button type="submit" class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Simpan Perubahan</button>
+            <!-- Top Action Header -->
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-6 mb-6 border-b border-slate-100 no-print">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:block">Koreksi Data Laporan</p>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
+                    <a href="view.php?id=<?= $id ?>" class="w-full sm:w-auto px-5 py-3 text-center text-xs font-black text-slate-550 uppercase tracking-widest hover:text-rose-600 transition-colors border border-slate-200 rounded-xl">Batal</a>
+                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase rounded-xl transition-all shadow-sm">Simpan Perubahan</button>
                 </div>
             </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
                 <div class="space-y-10">
-                    <div class="bg-amber-50 p-6 md:p-8 rounded-3xl border border-amber-100">
-                        <label class="text-amber-700">Tahapan Alur Kerja</label>
-                        <select name="jenis" id="jenisSelect" required class="border-amber-200 focus:border-amber-500">
+                    <div class="bg-amber-50/50 p-6 md:p-8 rounded-3xl border border-amber-200">
+                        <label class="text-amber-900">Tahapan Alur Kerja</label>
+                        <select name="jenis" id="jenisSelect" required class="border-amber-300 focus:border-amber-500 bg-white">
                             <?php foreach ($step_mapping as $val): ?>
                                 <option value="<?= $val ?>" <?= ($doc['jenis'] == $val) ? 'selected' : '' ?>><?= str_replace('_', ' ', $val) ?></option>
                             <?php endforeach; ?>
@@ -116,14 +125,14 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
                         <input type="text" name="nama_dokumen" value="<?= htmlspecialchars($doc['nama_dokumen']) ?>" required>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <div>
                             <label>Tanggal Laporan</label>
                             <input type="date" name="tanggal" value="<?= htmlspecialchars($doc['tanggal']) ?>" required>
                         </div>
                         <div>
                             <label>Lini Produk</label>
-                            <select name="produk" required>
+                            <select name="produk" required class="bg-white">
                                 <option value="Mineral_600ml" <?= ($doc['produk'] == 'Mineral_600ml') ? 'selected' : '' ?>>Mineral 600ml</option>
                                 <option value="Mineral_330ml" <?= ($doc['produk'] == 'Mineral_330ml') ? 'selected' : '' ?>>Mineral 330ml</option>
                                 <option value="Cup_240ml" <?= ($doc['produk'] == 'Cup_240ml') ? 'selected' : '' ?>>Cup 240ml</option>
@@ -132,10 +141,10 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <div>
                             <label>Kode Mesin</label>
-                            <select name="machine_id" required>
+                            <select name="machine_id" required class="bg-white">
                                 <?php foreach ($machines as $m): ?>
                                     <option value="<?= $m['nama_mesin'] ?>" <?= ($doc['machine_id'] == $m['nama_mesin']) ? 'selected' : '' ?>><?= $m['nama_mesin'] ?></option>
                                 <?php endforeach; ?>
@@ -143,7 +152,7 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
                         </div>
                         <div>
                             <label>Petugas Lapangan</label>
-                            <select name="inspector" required>
+                            <select name="inspector" required class="bg-white">
                                 <?php foreach ($inspectors as $i): ?>
                                     <option value="<?= $i['nama_inspector'] ?>" <?= ($doc['inspector'] == $i['nama_inspector']) ? 'selected' : '' ?>><?= $i['nama_inspector'] ?></option>
                                 <?php endforeach; ?>
@@ -155,18 +164,18 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
                     <div id="labParametersSection" class="hidden">
                         <div class="p-6 bg-slate-50 rounded-3xl border border-slate-200">
                             <label class="mb-4 text-slate-800 block font-black">Parameter Uji Laboratorium</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
-                                    <label class="text-[10px] text-slate-500">pH Air</label>
-                                    <input type="number" step="0.01" name="ph" value="<?= htmlspecialchars($doc['ph'] ?? '') ?>">
+                                    <label class="text-xs text-slate-650">pH Air</label>
+                                    <input type="number" step="0.01" name="ph" value="<?= htmlspecialchars($doc['ph'] ?? '') ?>" class="bg-white">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500">TDS (PPM)</label>
-                                    <input type="number" step="0.01" name="tds" value="<?= htmlspecialchars($doc['tds'] ?? '') ?>">
+                                    <label class="text-xs text-slate-650">TDS (PPM)</label>
+                                    <input type="number" step="0.01" name="tds" value="<?= htmlspecialchars($doc['tds'] ?? '') ?>" class="bg-white">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-slate-500">Kekeruhan (NTU)</label>
-                                    <input type="number" step="0.01" name="kekeruhan" value="<?= htmlspecialchars($doc['kekeruhan'] ?? '') ?>">
+                                    <label class="text-xs text-slate-650">Kekeruhan (NTU)</label>
+                                    <input type="number" step="0.01" name="kekeruhan" value="<?= htmlspecialchars($doc['kekeruhan'] ?? '') ?>" class="bg-white">
                                 </div>
                             </div>
                         </div>
@@ -174,42 +183,47 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
                 </div>
 
                 <div class="space-y-10">
-                    <div>
-                        <label>Keputusan Akhir (Verdict)</label>
-                        <div class="flex gap-6">
+                    <!-- Verdict Selection (Hanya untuk Langkah 02 & 05) -->
+                    <div id="verdictSection" class="<?= ($doc['jenis'] == 'Uji_Lab' || $doc['jenis'] == 'Uji_Ulang') ? '' : 'hidden' ?>">
+                        <label>Hasil Uji Kualitas (Fisik)</label>
+                        <div class="flex flex-col sm:flex-row gap-6">
                             <label class="flex-grow cursor-pointer group">
-                                <input type="radio" name="status" value="Passed" <?= ($doc['status'] == 'Passed' || $doc['status'] == 'Lolos') ? 'checked' : '' ?> class="hidden peer">
-                                <div class="p-6 md:p-8 border-2 border-slate-100 rounded-3xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all group-hover:bg-slate-50">
-                                    <span class="block text-4xl mb-2">✓</span>
-                                    <span class="text-xs font-black uppercase text-slate-400 peer-checked:text-emerald-700 tracking-widest">LOLOS</span>
+                                <input type="radio" name="status_mutu" value="Passed" <?= ($doc['status_mutu'] == 'Passed' || $doc['status_mutu'] == 'Lolos') ? 'checked' : '' ?> class="hidden peer">
+                                <div class="p-6 border-2 border-slate-200 rounded-3xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all group-hover:bg-slate-50">
+                                    <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-emerald-700">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                    <span class="text-xs font-black uppercase text-slate-500 peer-checked:text-emerald-800 tracking-widest block mt-2">PASSED / LOLOS</span>
                                 </div>
                             </label>
                             <label class="flex-grow cursor-pointer group">
-                                <input type="radio" name="status" value="Reject" <?= ($doc['status'] == 'Reject') ? 'checked' : '' ?> class="hidden peer">
-                                <div class="p-6 md:p-8 border-2 border-slate-100 rounded-3xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all group-hover:bg-slate-50">
-                                    <span class="block text-4xl mb-2">✗</span>
-                                    <span class="text-xs font-black uppercase text-slate-400 peer-checked:text-rose-700 tracking-widest">REJECT</span>
+                                <input type="radio" name="status_mutu" value="Reject" <?= ($doc['status_mutu'] == 'Reject') ? 'checked' : '' ?> class="hidden peer">
+                                <div class="p-6 border-2 border-slate-200 rounded-3xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all group-hover:bg-slate-50">
+                                    <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-rose-700">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </div>
+                                    <span class="text-xs font-black uppercase text-slate-500 peer-checked:text-rose-800 tracking-widest block mt-2">REJECT / GAGAL</span>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 p-6 md:p-8 rounded-3xl border border-slate-200">
+                    <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                         <label class="mb-3 text-slate-700">Ubah Tautan Dokumen Cloud (G-Drive / OneDrive)</label>
-                        <input type="url" name="external_link" value="<?= htmlspecialchars($doc['external_link'] ?? '') ?>" placeholder="https://..." class="w-full">
-                        <p class="text-[9px] text-slate-400 mt-3 font-bold leading-relaxed">*Catatan: Untuk mengubah file scan fisik, Anda harus menghapus laporan ini dan membuat yang baru.</p>
+                        <input type="url" name="external_link" value="<?= htmlspecialchars($doc['external_link'] ?? '') ?>" placeholder="https://..." class="w-full bg-white">
+                        <p class="text-xs text-slate-500 mt-3 font-bold leading-relaxed">*Catatan: Untuk mengubah file scan fisik, Anda harus menghapus laporan ini dan membuat yang baru.</p>
                     </div>
 
                     <div>
                         <label>Catatan Temuan Lapangan</label>
-                        <textarea name="deskripsi" rows="5" placeholder="Tuliskan temuan anomali..."><?= htmlspecialchars(strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $doc['deskripsi'] ?? ''))) ?></textarea>
+                        <textarea name="deskripsi" rows="5" placeholder="Tuliskan temuan anomali..." class="bg-white"><?= htmlspecialchars(strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $doc['deskripsi'] ?? ''))) ?></textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-16 pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-6 md:gap-12">
-                <a href="view.php?id=<?= $id ?>" class="text-sm font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Batal & Kembali</a>
-                <button type="submit" class="btn-save w-full sm:w-auto bg-amber-500 hover:bg-amber-600 shadow-amber-500/30">Simpan Perubahan</button>
+            <div class="mt-16 pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-6 w-full">
+                <a href="view.php?id=<?= $id ?>" class="w-full sm:w-auto text-center px-6 py-4 text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal &amp; Kembali</a>
+                <button type="submit" class="btn-save w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shadow-amber-500/20">Simpan Perubahan</button>
             </div>
         </form>
     </div>
@@ -218,12 +232,15 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
         document.addEventListener('DOMContentLoaded', function() {
             const jenisSelect = document.getElementById('jenisSelect');
             const labSection = document.getElementById('labParametersSection');
+            const verdictSection = document.getElementById('verdictSection');
             
             function toggleLabParams() {
                 if(jenisSelect.value === 'Uji_Lab' || jenisSelect.value === 'Uji_Ulang') {
                     labSection.classList.remove('hidden');
+                    if (verdictSection) verdictSection.classList.remove('hidden');
                 } else {
                     labSection.classList.add('hidden');
+                    if (verdictSection) verdictSection.classList.add('hidden');
                 }
             }
             
@@ -231,8 +248,5 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
             toggleLabParams(); // Execute on load
         });
     </script>
-    </main>
-    </div>
-    </div>
 </body>
 </html>

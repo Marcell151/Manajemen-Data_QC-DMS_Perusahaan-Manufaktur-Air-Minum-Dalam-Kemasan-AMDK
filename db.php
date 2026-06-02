@@ -50,6 +50,7 @@ try {
         machine_id TEXT,
         admin_entry_name TEXT,
         status TEXT,
+        status_mutu TEXT DEFAULT 'Passed',
         approval_status TEXT DEFAULT 'Waiting Approval',
         approved_by TEXT,
         link TEXT,
@@ -72,6 +73,7 @@ try {
         'no_dokumen' => "TEXT",
         'machine_id' => "TEXT",
         'admin_entry_name' => "TEXT",
+        'status_mutu' => "TEXT DEFAULT 'Passed'",
         'approval_status' => "TEXT DEFAULT 'Waiting Approval'",
         'approved_by' => "TEXT",
         'parent_doc_id' => "INTEGER",
@@ -93,6 +95,9 @@ try {
 
     // Retroactive update: isi created_at jika kosong berdasarkan tanggal
     $pdo->exec("UPDATE documents SET created_at = tanggal || ' 08:00:00' WHERE created_at IS NULL");
+    
+    // Retroactive update: salin status ke status_mutu jika kosong
+    $pdo->exec("UPDATE documents SET status_mutu = status WHERE status_mutu IS NULL OR status_mutu = ''");
 
     // Tambahkan Index jika belum ada (SQLite workaround untuk UNIQUE)
     $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_no_dokumen ON documents(no_dokumen)");
@@ -172,6 +177,15 @@ try {
             VALUES ('QC-LABS-$ym-003', 'Uji Mutu Berkala Batch BT-505', 'Botol_330ml', 'Uji_Lab', '$today', 'Indah Permata', 'Mesin Filling Botol A', 'Admin Data Entry QC', 'Lolos', 'QC_AMDK/Botol_330ml/2026/April', '7.0', '80', '0.05')");
     }
 
+    // Retroactive update: isi created_at jika kosong berdasarkan tanggal
+    $pdo->exec("UPDATE documents SET created_at = tanggal || ' 08:00:00' WHERE created_at IS NULL");
+    
+    // Retroactive update: isi approved_at untuk dokumen Approval Manager yang disetujui
+    $pdo->exec("UPDATE documents SET approved_at = tanggal || ' 10:00:00' WHERE jenis = 'Approval_Manager' AND approval_status = 'Approved' AND approved_at IS NULL");
+    
+    // Retroactive update: salin status ke status_mutu jika kosong
+    $pdo->exec("UPDATE documents SET status_mutu = status WHERE status_mutu IS NULL OR status_mutu = ''");
+
 } catch (PDOException $e) {
     die("Kesalahan Database: " . $e->getMessage());
 }
@@ -203,5 +217,34 @@ function formatLeadTime($created, $approved) {
         $result[] = $minutes . " Menit";
     }
     return implode(" ", $result);
+}
+
+// Fungsi bantu untuk menghitung durasi perbaikan mesin (Langkah 03 created_at -> Langkah 06 approved_at)
+function getRepairDowntime($doc, $pdo) {
+    if (empty($doc)) return '-';
+    
+    $current = $doc;
+    $approved_time = $doc['approved_at'] ?? null;
+    
+    // Traceback parent berantai
+    for ($i = 0; $i < 10; $i++) {
+        if (empty($current['parent_doc_id'])) {
+            break;
+        }
+        $stmt = $pdo->prepare("SELECT * FROM documents WHERE id = ?");
+        $stmt->execute([$current['parent_doc_id']]);
+        $parent = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$parent) {
+            break;
+        }
+        if ($parent['jenis'] == 'Diagnosis_Mesin') {
+            $created_time = $parent['created_at'];
+            if (!empty($created_time) && !empty($approved_time)) {
+                return formatLeadTime($created_time, $approved_time);
+            }
+        }
+        $current = $parent;
+    }
+    return '-';
 }
 ?>

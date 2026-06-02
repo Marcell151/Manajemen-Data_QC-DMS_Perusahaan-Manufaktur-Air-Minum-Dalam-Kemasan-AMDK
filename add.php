@@ -41,10 +41,20 @@ if (!$can_access_input && $_SESSION['role'] !== 'Manager') {
     exit;
 }
 
-// Untuk Step > 01, ambil daftar Laporan Induk (Step 01) yang aktif
+// Ambil daftar Laporan Induk sesuai langkah aktif (chaining)
 $parent_options = [];
 if ($current_step_num != '1') {
-    $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Catatan_Batch' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    if ($current_step_num == '2') {
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Catatan_Batch' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($current_step_num == '3') {
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Uji_Lab' AND status = 'Reject' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($current_step_num == '4') {
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Diagnosis_Mesin' AND approval_status = 'Approved' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($current_step_num == '5') {
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Laporan_Perbaikan' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($current_step_num == '6') {
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Uji_Ulang' AND (status = 'Passed' OR status = 'Lolos') ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 
 // Logic Simpan
@@ -55,9 +65,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $tanggal = $_POST['tanggal'];
     $inspector = $_POST['inspector'] ?? 'System';
     $machine_id = $_POST['machine_id'] ?? '-';
-    $status = $_POST['status'];
+    $status_mutu = $_POST['status_mutu'] ?? 'Passed';
+    if ($jenis !== 'Uji_Lab' && $jenis !== 'Uji_Ulang') {
+        $status_mutu = 'Passed';
+    }
+    $status = $status_mutu;
     $deskripsi = $_POST['deskripsi'] ?? '';
     $parent_doc_id = $_POST['parent_doc_id'] ?? null;
+    
+    // Blocker Langkah 04: Harus memiliki parent Langkah 03 yang Approved
+    if ($jenis == 'Laporan_Perbaikan') {
+        if (empty($parent_doc_id)) {
+            die("Error: Dokumen Perbaikan harus memiliki Laporan Diagnosis Masalah sebagai induk.");
+        }
+        $stmt_check = $pdo->prepare("SELECT jenis, approval_status FROM documents WHERE id = ?");
+        $stmt_check->execute([$parent_doc_id]);
+        $parent_doc_check = $stmt_check->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$parent_doc_check || $parent_doc_check['jenis'] !== 'Diagnosis_Mesin' || $parent_doc_check['approval_status'] !== 'Approved') {
+            die("Error: Langkah 04 hanya dapat dibuat jika Laporan Diagnosis Masalah (Langkah 03) telah disetujui (Approved) oleh Manajer Produksi.");
+        }
+    }
+    
     $external_link = $_POST['external_link'] ?? '';
     $ph = $_POST['ph'] ?? null;
     $tds = $_POST['tds'] ?? null;
@@ -93,10 +122,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $bulan = date("F", $timestamp);
     $folder_path = "QC_AMDK/{$produk}/{$tahun}/{$bulan}";
 
-    $approval_status = ($jenis == 'Approval_Manager') ? 'Waiting Approval' : '-';
+    $approval_status = ($jenis == 'Approval_Manager' || $jenis == 'Diagnosis_Mesin') ? 'Waiting Approval' : '-';
 
-    $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, deskripsi, folder_path, parent_doc_id, file_path, approval_status, external_link, ph, tds, kekeruhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $_SESSION['role'], $status, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
+    $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, status_mutu, deskripsi, folder_path, parent_doc_id, file_path, approval_status, external_link, ph, tds, kekeruhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $_SESSION['role'], $status, $status_mutu, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
 
     header("Location: index.php");
     exit;
@@ -134,12 +163,12 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
     <title>Input QC - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         :root { --primary: #0284c7; --bg-main: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        h1 { font-family: 'Outfit', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
+        h1 { font-family: 'Plus Jakarta Sans', sans-serif; }
         .form-card { background: white; border-radius: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
-        label { display: block; font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem; }
+        label { display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem; }
         input, select, textarea {
             width: 100%;
             padding: 1rem 1.25rem;
@@ -169,6 +198,7 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             width: 100%;
         }
         .btn-save:hover { background: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2); }
+        
         .camera-btn {
             background: #0284c7;
             color: white;
@@ -186,6 +216,7 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             gap: 0.5rem;
         }
         .camera-btn:active { transform: scale(0.97); background: #0369a1; }
+        
         /* ---- MOBILE SPECIFIC ---- */
         @media (max-width: 767px) {
             .form-card { border-radius: 20px !important; padding: 1.25rem !important; }
@@ -197,8 +228,6 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             .camera-btn .cam-label { font-size: 1rem !important; }
             .verdict-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
             .verdict-box { padding: 1.2rem 0.5rem !important; border-radius: 16px !important; }
-            .verdict-box .v-icon { font-size: 2rem !important; }
-            .verdict-box .v-label { font-size: 0.85rem !important; }
             .btn-save { font-size: 1rem !important; padding: 1.1rem !important; border-radius: 16px !important; }
             .section-card { border-radius: 16px !important; padding: 1rem !important; }
         }
@@ -211,8 +240,11 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
         <div class="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
             <div>
                 <!-- Mobile: Back link -->
-                <a href="index.php" class="md:hidden mb-3 flex items-center gap-1 text-slate-400 text-sm font-bold">&#8592; Kembali</a>
-                <p class="text-[10px] font-black text-sky-600 uppercase tracking-[0.3em] mb-1">
+                <a href="index.php" class="md:hidden mb-3 flex items-center gap-1 text-slate-500 hover:text-sky-600 text-sm font-black transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Kembali
+                </a>
+                <p class="text-xs font-black text-sky-600 uppercase tracking-[0.3em] mb-1">
                     Step <?= $current_step_num ?> &bull; <?= htmlspecialchars($template_label) ?>
                 </p>
                 <h1 class="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Input Bukti Lapangan</h1>
@@ -220,8 +252,9 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                 <!-- Mobile: Cetak Form Kosong button (below title) -->
                 <?php if ($template_exists): ?>
                 <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
-                   class="md:hidden mt-3 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 border border-slate-200 text-slate-600 text-xs font-black uppercase rounded-xl no-print">
-                    &#128424; Cetak Form Kosong &rarr;
+                   class="md:hidden mt-3 inline-flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-xs font-black uppercase rounded-xl no-print">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    Cetak Form Kosong &rarr;
                 </a>
                 <?php endif; ?>
             </div>
@@ -229,36 +262,37 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             <!-- Desktop: Cetak Form Kosong button -->
             <?php if ($template_exists): ?>
             <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
-               class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all group">
-                <span>&#128424;</span>
+               class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all group">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 <span>Cetak Form Kosong</span>
-                <span class="text-slate-300 group-hover:text-slate-400 font-normal normal-case tracking-normal">
+                <span class="text-slate-500 group-hover:text-slate-300 font-bold normal-case tracking-normal">
                     &mdash; <?= htmlspecialchars($template_label) ?>
                 </span>
             </a>
             <?php else: ?>
-            <span class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-slate-50 border border-slate-200 text-slate-300 text-[10px] font-black uppercase rounded-xl cursor-not-allowed"
+            <span class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-slate-50 border border-slate-200 text-slate-400 text-xs font-black uppercase rounded-xl cursor-not-allowed"
                   title="Template PDF tidak ditemukan di folder uploads/">
-                &#128424; Cetak Form Kosong (Tidak Tersedia)
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Cetak Form Kosong (Tidak Tersedia)
             </span>
             <?php endif; ?>
         </div>
 
         <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-5 md:p-12 mb-32">
             
-            <!-- Top Action Header (Tengah-Atas / Anti-Missclick) -->
-            <div class="flex justify-between items-center pb-6 mb-6 border-b border-slate-100 no-print">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Input Data Lapangan</p>
-                <div class="flex gap-3 w-full sm:w-auto justify-end">
-                    <a href="index.php" class="px-5 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-xl">Batal</a>
-                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-sky-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-md">Kirim Laporan</button>
+            <!-- Top Action Header -->
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-6 mb-6 border-b border-slate-100 no-print">
+                <p class="text-sm font-black text-slate-500 uppercase tracking-wider hidden md:block">Input Data Lapangan</p>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
+                    <a href="index.php" class="w-full sm:w-auto px-5 py-3 text-center text-xs font-black text-slate-500 uppercase tracking-widest hover:text-rose-600 transition-colors border border-slate-200 rounded-xl">Batal</a>
+                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-slate-950 hover:bg-sky-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-sm">Kirim Laporan</button>
                 </div>
             </div>
 
             <div class="form-grid <?= $is_mobile_mode ? 'flex flex-col gap-8' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
                 
                 <div class="space-y-6 md:space-y-8">
-                    <div class="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 section-card">
+                    <div class="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-200 section-card">
                         <label>Langkah Alur Kerja</label>
                         <select name="jenis" id="jenisSelect" onchange="window.location.href='add.php?step=' + this.options[this.selectedIndex].getAttribute('data-step')" <?= $is_fixed_step ? 'readonly class="bg-slate-100 pointer-events-none opacity-70"' : '' ?>>
                             <?php foreach ($step_mapping as $k => $val): 
@@ -274,17 +308,19 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                     </div>
 
                     <?php if ($current_step_num != '1'): ?>
-                    <div class="bg-sky-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-sky-100 section-card">
-                        <label class="text-sky-700">Pilih Laporan Induk (Batch Sampling)</label>
+                    <div class="bg-sky-50/50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-sky-100 section-card">
+                        <label class="text-sky-800">Pilih Laporan Induk</label>
                         <select name="parent_doc_id" id="parentSelect" required onchange="autoFillMetadata()">
-                            <option value="">-- Pilih Batch Yang Sedang Berjalan --</option>
-                            <?php foreach ($parent_options as $p): ?>
-                                <option value="<?= $p['id'] ?>" data-prod="<?= $p['produk'] ?>" data-machine="<?= $p['machine_id'] ?>">
+                            <option value="">-- Pilih Laporan Induk --</option>
+                            <?php foreach ($parent_options as $p): 
+                                $selected = (isset($_GET['p_id']) && $_GET['p_id'] == $p['id']) ? 'selected' : '';
+                            ?>
+                                <option value="<?= $p['id'] ?>" data-prod="<?= $p['produk'] ?>" data-machine="<?= $p['machine_id'] ?>" <?= $selected ?>>
                                     <?= $p['no_dokumen'] ?> (<?= str_replace('_', ' ', $p['produk']) ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="text-[11px] text-sky-500 mt-2 font-bold italic">*Pilih ini agar data Batch & Produk terisi otomatis.</p>
+                        <p class="text-xs text-sky-850 mt-2 font-bold italic">*Pilih ini agar data Lini Produk & Kode Mesin terisi otomatis.</p>
                     </div>
                     <?php endif; ?>
 
@@ -293,13 +329,15 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                         <input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <div>
                             <label>Lini Produk</label>
                             <select name="produk" id="produkSelect" required>
                                 <option value="">-- Pilih Produk --</option>
-                                <?php foreach ($product_list as $key => $val): ?>
-                                    <option value="<?= $key ?>"><?= $val ?></option>
+                                <?php foreach ($product_list as $key => $val): 
+                                    $selected = (isset($_GET['prod']) && $_GET['prod'] == $key) ? 'selected' : '';
+                                ?>
+                                    <option value="<?= $key ?>" <?= $selected ?>><?= $val ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -307,8 +345,10 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                             <label>Kode Mesin</label>
                             <select name="machine_id" id="machineSelect" required>
                                 <option value="">-- Pilih Mesin --</option>
-                                <?php foreach ($machines as $m): ?>
-                                    <option value="<?= $m['nama_mesin'] ?>"><?= $m['nama_mesin'] ?></option>
+                                <?php foreach ($machines as $m): 
+                                    $selected = (isset($_GET['m_id']) && $_GET['m_id'] == $m['nama_mesin']) ? 'selected' : '';
+                                ?>
+                                    <option value="<?= $m['nama_mesin'] ?>" <?= $selected ?>><?= $m['nama_mesin'] ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -324,70 +364,81 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                     </div>
 
                     <?php if ($current_step_num == '2' || $current_step_num == '5'): ?>
-                    <div class="p-4 md:p-6 bg-amber-50 rounded-2xl md:rounded-3xl border border-amber-100 section-card">
-                        <label class="mb-4 text-amber-900 block font-black">Parameter Lab Aktual</label>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div><label class="text-[9px]">pH</label><input type="number" step="0.1" name="ph" class="p-2.5 text-base"></div>
-                            <div><label class="text-[9px]">TDS</label><input type="number" step="1" name="tds" class="p-2.5 text-base"></div>
-                            <div><label class="text-[9px]">NTU</label><input type="number" step="0.01" name="kekeruhan" class="p-2.5 text-base"></div>
+                    <div class="p-4 md:p-6 bg-slate-50 rounded-2xl md:rounded-3xl border border-slate-200 section-card">
+                        <label class="mb-4 text-slate-800 block font-black">Parameter Lab Aktual</label>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div><label class="text-xs">pH</label><input type="number" step="0.1" name="ph" class="p-2.5 text-base bg-white"></div>
+                            <div><label class="text-xs">TDS</label><input type="number" step="1" name="tds" class="p-2.5 text-base bg-white"></div>
+                            <div><label class="text-xs">NTU</label><input type="number" step="0.01" name="kekeruhan" class="p-2.5 text-base bg-white"></div>
                         </div>
                     </div>
                     <?php endif; ?>
                 </div>
 
                 <div class="space-y-6 md:space-y-10">
-                    <!-- Verdict Selection -->
+                    <!-- Verdict Selection (Hanya untuk Langkah 02 & 05) -->
+                    <?php if ($current_step_num == '2' || $current_step_num == '5'): ?>
                     <div>
-                        <label>Hasil Pemeriksaan</label>
+                        <label>Hasil Uji Kualitas (Fisik)</label>
                         <div class="verdict-grid grid grid-cols-2 gap-3 md:gap-4">
                             <label class="cursor-pointer">
-                                <input type="radio" name="status" value="Passed" checked class="hidden peer">
-                                <div class="verdict-box py-5 md:py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
-                                    <span class="v-icon block text-2xl mb-1">&#10003;</span>
-                                    <span class="v-label text-sm font-black text-slate-400 peer-checked:text-emerald-700 uppercase block">LOLOS</span>
+                                <input type="radio" name="status_mutu" value="Passed" checked class="hidden peer">
+                                <div class="verdict-box py-5 border-2 border-slate-200 rounded-2xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
+                                    <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-emerald-700">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                    <span class="text-xs font-black text-slate-500 peer-checked:text-emerald-800 uppercase block">PASSED / LOLOS</span>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
-                                <input type="radio" name="status" value="Reject" class="hidden peer">
-                                <div class="verdict-box py-5 md:py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all">
-                                    <span class="v-icon block text-2xl mb-1">&#10007;</span>
-                                    <span class="v-label text-sm font-black text-slate-400 peer-checked:text-rose-700 uppercase block">REJECT</span>
+                                <input type="radio" name="status_mutu" value="Reject" class="hidden peer">
+                                <div class="verdict-box py-5 border-2 border-slate-200 rounded-2xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all">
+                                    <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-rose-700">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </div>
+                                    <span class="text-xs font-black text-slate-500 peer-checked:text-rose-800 uppercase block">REJECT / GAGAL</span>
                                 </div>
                             </label>
                         </div>
                     </div>
+                    <?php else: ?>
+                        <input type="hidden" name="status_mutu" value="Passed">
+                    <?php endif; ?>
 
                     <!-- File Upload -->
                     <div class="space-y-4">
                         <label>Lampiran Bukti (Foto Kamera)</label>
                         <div class="camera-btn" onclick="document.getElementById('fileInput').click()" style="min-height:90px">
-                            <span class="cam-icon text-4xl">&#128248;</span>
-                            <span class="cam-label text-sm font-black uppercase tracking-widest">Buka Kamera Tablet / Unggah Bukti</span>
-                            <p class="text-xs opacity-60 mt-1">Kamera tablet langsung aktif</p>
+                            <svg class="w-8 h-8 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span class="cam-label text-sm font-black uppercase tracking-widest mt-1">Unggah Bukti / Ambil Foto</span>
+                            <p class="text-xs opacity-80">Kamera langsung aktif di Tablet/HP</p>
                         </div>
                         <input type="file" name="dokumen_fisik" id="fileInput" accept="image/*" capture="environment" class="hidden" onchange="updateFileName(this)">
-                        <div id="fileStatus" class="text-center text-sm font-bold text-emerald-600 hidden py-2 bg-emerald-50 rounded-xl border border-emerald-200">&#9989; Foto Siap Diunggah</div>
+                        <div id="fileStatus" class="text-center text-xs font-black text-emerald-800 py-3 bg-emerald-50 rounded-xl border border-emerald-250 hidden">File Siap Diunggah</div>
                         
                         <div class="pt-3 border-t border-slate-100">
-                            <label class="text-[10px]">Atau Gunakan Tautan Cloud (G-Drive, dll)</label>
-                            <input type="url" name="external_link" placeholder="https://drive.google.com/..." class="p-3 text-sm">
+                            <label class="text-xs">Atau Gunakan Tautan Cloud (G-Drive, dll)</label>
+                            <input type="url" name="external_link" placeholder="https://drive.google.com/..." class="p-3 text-sm bg-white">
                         </div>
                     </div>
 
                     <!-- Notes -->
                     <div>
                         <label>Catatan Temuan Lapangan</label>
-                        <textarea name="deskripsi" rows="3" placeholder="Tuliskan catatan atau kendala di sini..." style="min-height:80px"></textarea>
+                        <textarea name="deskripsi" rows="3" placeholder="Tuliskan catatan atau kendala di sini..." style="min-height:80px" class="bg-white"></textarea>
                     </div>
                 </div>
 
             </div>
 
             <div class="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p class="text-[10px] text-slate-400 font-bold italic hidden md:block">Pastikan data & foto sudah benar sebelum menyimpan.</p>
+                <p class="text-xs text-slate-500 font-bold italic hidden md:block">Pastikan data & foto sudah benar sebelum menyimpan.</p>
                 <div class="flex gap-3 w-full md:w-auto">
-                    <a href="index.php" class="flex-grow md:flex-grow-0 px-6 py-4 text-center text-sm font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-2xl">Batal</a>
-                    <button type="submit" class="btn-save flex-grow md:flex-grow-0 md:w-auto">&#128228; Kirim Laporan</button>
+                    <a href="index.php" class="flex-grow md:flex-grow-0 px-6 py-4 text-center text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal</a>
+                    <button type="submit" class="btn-save flex-grow md:flex-grow-0 md:w-auto">Kirim Laporan</button>
                 </div>
             </div>
         </form>
@@ -421,12 +472,11 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
 
         function updateFileName(input) {
             if (input.files && input.files[0]) {
-                document.getElementById('fileStatus').classList.remove('hidden');
-                document.getElementById('fileStatus').innerText = "✅ Berhasil Memuat: " + input.files[0].name;
+                const fileStatus = document.getElementById('fileStatus');
+                fileStatus.classList.remove('hidden');
+                fileStatus.innerText = "✓ Berhasil Memuat: " + input.files[0].name;
             }
         }
-
-
     </script>
 </body>
 </html>

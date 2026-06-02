@@ -13,12 +13,60 @@ $role_name_map = [
 ];
 $role_name = $role_name_map[$_SESSION['role']] ?? 'User';
 $is_technician = ($_SESSION['role'] == 'Pekerja_Lapangan');
+
+// Inisialisasi variabel mobile filter untuk mencegah warning undefined
+$mob_filter = $_GET['filter'] ?? '';
+
+$steps_config = [
+    'step1' => [
+        'num' => '01',
+        'title' => 'Sampling (Batch)',
+        'step_val' => 1,
+        'color' => 'indigo',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>'
+    ],
+    'step2' => [
+        'num' => '02',
+        'title' => 'Uji Laboratorium',
+        'step_val' => 2,
+        'color' => 'amber',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>'
+    ],
+    'step3' => [
+        'num' => '03',
+        'title' => 'Diagnosis Masalah',
+        'step_val' => 3,
+        'color' => 'rose',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>'
+    ],
+    'step4' => [
+        'num' => '04',
+        'title' => 'Perbaikan Teknik',
+        'step_val' => 4,
+        'color' => 'orange',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'
+    ],
+    'step5' => [
+        'num' => '05',
+        'title' => 'Uji Verifikasi',
+        'step_val' => 5,
+        'color' => 'teal',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>'
+    ],
+    'step6' => [
+        'num' => '06',
+        'title' => 'Approval Final',
+        'step_val' => 6,
+        'color' => 'emerald',
+        'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>'
+    ]
+];
 ?>
 
 <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
     @media print {
         .no-print { display: none !important; }
@@ -63,7 +111,7 @@ $is_technician = ($_SESSION['role'] == 'Pekerja_Lapangan');
         font-size: 15px;
     }
     .mobile-topbar .role-badge {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         padding: 4px 10px;
         border-radius: 20px;
@@ -71,71 +119,16 @@ $is_technician = ($_SESSION['role'] == 'Pekerja_Lapangan');
         color: #0284c7;
         border: 1px solid #bae6fd;
     }
-    .mobile-topbar .role-badge.technician { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .mobile-topbar .role-badge.technician { background: #f0dfa2; color: #854d0e; border-color: #fef08a; }
     .mobile-topbar .role-badge.manager { background: #fff1f2; color: #e11d48; border-color: #fecdd3; }
-
-    /* ---- MOBILE BOTTOM NAV (Technician Only) ---- */
-    .mobile-bottom-nav {
-        display: none;
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        background: #fff;
-        border-top: 1.5px solid #e2e8f0;
-        padding: 6px 0 env(safe-area-inset-bottom, 6px);
-        z-index: 100;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
-    }
-    .mobile-bottom-nav .nav-items {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-    }
-    .mobile-bottom-nav .nav-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        text-decoration: none;
-        color: #94a3b8;
-        transition: all 0.15s;
-        min-width: 52px;
-    }
-    .mobile-bottom-nav .nav-item.active {
-        color: #0284c7;
-        background: #f0f9ff;
-    }
-    .mobile-bottom-nav .nav-item .nav-icon {
-        font-size: 22px;
-        line-height: 1;
-    }
-    .mobile-bottom-nav .nav-item .nav-label {
-        font-size: 9px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        text-align: center;
-        line-height: 1.1;
-    }
-    .mobile-bottom-nav .nav-item.add-btn {
-        color: #fff;
-        background: #0284c7;
-        box-shadow: 0 4px 12px rgba(2,132,199,0.35);
-        padding: 8px 12px;
-        transform: translateY(-6px);
-        border-radius: 16px;
-    }
-    .mobile-bottom-nav .nav-item.add-btn .nav-label { color: #fff; }
 
     /* ---- MOBILE CONTENT PADDING ---- */
     @media (max-width: 767px) {
         .mobile-topbar { display: flex; }
-        .mobile-bottom-nav { display: block; }
-        /* Push content below fixed topbar and above bottom nav */
+        /* Push content below fixed topbar */
         .mobile-content-area {
-            padding-top: 68px !important;
-            padding-bottom: 90px !important;
+            padding-top: 76px !important;
+            padding-bottom: 2rem !important;
         }
         /* Hide desktop sidebar on mobile */
         .sidebar-container { display: none !important; }
@@ -147,156 +140,131 @@ $is_technician = ($_SESSION['role'] == 'Pekerja_Lapangan');
     @media (min-width: 768px) {
         /* Hide mobile-only elements on desktop */
         .mobile-topbar { display: none !important; }
-        .mobile-bottom-nav { display: none !important; }
     }
 </style>
 
 <!-- MOBILE TOPBAR (Visible only on mobile) -->
 <div class="mobile-topbar no-print">
-    <div class="logo-mark">
-        <div class="mp-badge">MP</div>
-        <span>QC-DMS</span>
-    </div>
     <div class="flex items-center gap-2">
-        <?php if ($is_technician): ?>
-            <span class="role-badge technician">👷 Teknisi</span>
-        <?php elseif ($_SESSION['role'] == 'Manager'): ?>
-            <span class="role-badge manager">👑 Manajer</span>
-        <?php else: ?>
-            <span class="role-badge">👤 Admin QC</span>
-        <?php endif; ?>
-        <button onclick="toggleMobileSidebar()" class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-lg">
-            ☰
+        <button onclick="toggleMobileSidebar()" class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-200 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
         </button>
+        <div class="logo-mark">
+            <div class="mp-badge">MP</div>
+            <span>QC-DMS</span>
+        </div>
+    </div>
+    <div>
+        <?php if ($is_technician): ?>
+            <span class="role-badge technician">Teknisi</span>
+        <?php elseif ($_SESSION['role'] == 'Manager'): ?>
+            <span class="role-badge manager">Manajer</span>
+        <?php else: ?>
+            <span class="role-badge">Admin QC</span>
+        <?php endif; ?>
     </div>
 </div>
 
-<!-- MOBILE BOTTOM NAVIGATION (Technician role) -->
-<?php
-$mob_filter = $_GET['filter'] ?? '';
-$mob_page   = $current_page;
-?>
-<nav class="mobile-bottom-nav no-print">
-    <div class="nav-items">
-        <!-- Dashboard -->
-        <a href="index.php" class="nav-item <?= ($mob_page == 'index.php' && !$mob_filter) ? 'active' : '' ?>">
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">Dashboard</span>
-        </a>
-        <?php if ($is_technician): ?>
-        <!-- Sampling (Step 1) -->
-        <a href="index.php?filter=step1" class="nav-item <?= ($mob_filter == 'step1') ? 'active' : '' ?>">
-            <span class="nav-icon">📄</span>
-            <span class="nav-label">Sampling</span>
-        </a>
-        <!-- Tambah Laporan Baru (Center CTA) -->
-        <a href="add.php" class="nav-item add-btn <?= ($mob_page == 'add.php') ? 'active' : '' ?>">
-            <span class="nav-icon">＋</span>
-            <span class="nav-label">Laporan</span>
-        </a>
-        <!-- Perbaikan (Step 4) -->
-        <a href="index.php?filter=step4" class="nav-item <?= ($mob_filter == 'step4') ? 'active' : '' ?>">
-            <span class="nav-icon">🔧</span>
-            <span class="nav-label">Perbaikan</span>
-        </a>
-        <?php else: ?>
-        <!-- Laporan Baru (Center) -->
-        <a href="add.php" class="nav-item add-btn <?= ($mob_page == 'add.php') ? 'active' : '' ?>">
-            <span class="nav-icon">＋</span>
-            <span class="nav-label">Baru</span>
-        </a>
-        <?php endif; ?>
-        <!-- Riwayat Arsip -->
-        <a href="archive.php" class="nav-item <?= ($mob_page == 'archive.php') ? 'active' : '' ?>">
-            <span class="nav-icon">📁</span>
-            <span class="nav-label">Arsip</span>
-        </a>
-    </div>
-</nav>
-
 <!-- MOBILE SIDEBAR DRAWER (Full menu, opened via hamburger) -->
-<div id="mobileSidebarOverlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-slate-900/50 z-[150] hidden no-print"></div>
+<div id="mobileSidebarOverlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-slate-900/60 z-[150] hidden no-print transition-opacity duration-300"></div>
 <div id="mobileSidebarDrawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-[200] flex flex-col shadow-2xl transform -translate-x-full transition-transform duration-300 overflow-y-auto no-print md:hidden">
     <!-- Drawer Header -->
-    <div class="p-5 bg-sky-600 flex items-center justify-between">
+    <div class="p-5 bg-sky-700 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white font-black text-sm">MP</div>
             <div>
                 <p class="text-white font-black text-base leading-none">QC-DMS</p>
-                <p class="text-sky-200 text-[10px] uppercase tracking-widest font-bold mt-0.5">Mineral Pure</p>
+                <p class="text-sky-200 text-xs uppercase tracking-widest font-bold mt-0.5">Mineral Pure</p>
             </div>
         </div>
-        <button onclick="toggleMobileSidebar()" class="w-9 h-9 bg-white/20 rounded-xl text-white flex items-center justify-center font-black text-lg">✕</button>
+        <button onclick="toggleMobileSidebar()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl text-white flex items-center justify-center transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
     </div>
 
     <!-- Role Info -->
-    <div class="mx-4 mt-4 p-4 rounded-2xl <?= $is_technician ? 'bg-emerald-50 border border-emerald-200' : ($_SESSION['role']=='Manager' ? 'bg-rose-50 border border-rose-200' : 'bg-sky-50 border border-sky-200') ?>">
-        <p class="text-[10px] font-black uppercase tracking-widest <?= $is_technician ? 'text-emerald-600' : ($_SESSION['role']=='Manager' ? 'text-rose-600' : 'text-sky-600') ?> mb-1">Login Sebagai</p>
+    <div class="mx-4 mt-4 p-4 rounded-2xl <?= $is_technician ? 'bg-amber-50 border border-amber-200' : ($_SESSION['role']=='Manager' ? 'bg-rose-50 border border-rose-200' : 'bg-sky-50 border border-sky-200') ?>">
+        <p class="text-xs font-black uppercase tracking-widest <?= $is_technician ? 'text-amber-800' : ($_SESSION['role']=='Manager' ? 'text-rose-700' : 'text-sky-700') ?> mb-1">Login Sebagai</p>
         <p class="font-black text-slate-800 text-sm"><?= $role_name ?></p>
     </div>
 
     <!-- Navigation -->
     <nav class="flex-grow py-4 px-3">
-        <a href="index.php" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-sky-50' ?>">
-            <span class="text-xl">📊</span>
+        <a href="index.php" class="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl mb-1 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-50' ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+            </svg>
             <span class="font-bold text-sm">Dashboard Utama</span>
         </a>
 
-        <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest px-4 mt-6 mb-3">Alur Kerja Mutu</p>
-        <?php
-        $mob_steps = [
-            'step1' => ['01', 'Sampling (Batch)', '📄', [1,3,4,5]],
-            'step2' => ['02', 'Uji Laboratorium', '🧪', [2]],
-            'step3' => ['03', 'Diagnosis Masalah', '⚙️', [1,3,4,5]],
-            'step4' => ['04', 'Perbaikan Teknik', '🔧', [1,3,4,5]],
-            'step5' => ['05', 'Uji Verifikasi', '🔬', [1,3,4,5]],
-            'step6' => ['06', 'Approval Final', '⚖️', [6]],
-        ];
-        foreach ($mob_steps as $mk => $mv):
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mt-8 mb-4">Alur Kerja Mutu</p>
+        
+        <?php foreach ($steps_config as $mk => $mv):
             $mob_is_active = ($mob_filter == $mk);
-            $mob_step_num = (int)substr($mk, 4);
+            $mob_step_num = $mv['step_val'];
             $mob_can_add = false;
             if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($mob_step_num, [1, 3, 4, 5])) $mob_can_add = true;
             if ($_SESSION['role'] == 'Admin_Entry' && $mob_step_num == 2) $mob_can_add = true;
         ?>
-        <div class="flex items-center gap-1 mb-1">
-            <a href="index.php?filter=<?= $mk ?>" onclick="toggleMobileSidebar()" class="flex-grow flex items-center gap-4 px-4 py-3.5 rounded-2xl <?= $mob_is_active ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-sky-50' ?>">
-                <span class="text-base font-black <?= $mob_is_active ? 'text-sky-200' : 'text-slate-300' ?>"><?= $mv[0] ?></span>
-                <span class="text-xl"><?= $mv[2] ?></span>
-                <span class="font-bold text-sm"><?= $mv[1] ?></span>
+        <div class="flex items-center gap-1 mb-2">
+            <a href="index.php?filter=<?= $mk ?>" onclick="toggleMobileSidebar()" class="flex-grow flex items-center gap-3 px-4 py-3 rounded-2xl <?= $mob_is_active ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-50' ?>">
+                <span class="text-xs font-black px-2 py-0.5 rounded <?= $mob_is_active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600' ?>"><?= $mv['num'] ?></span>
+                <svg class="w-5 h-5 flex-shrink-0 <?= $mob_is_active ? 'text-white' : 'text-sky-600' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <?= $mv['svg'] ?>
+                </svg>
+                <span class="font-bold text-sm"><?= $mv['title'] ?></span>
             </a>
             <?php if ($mob_can_add): ?>
-            <a href="add.php?step=<?= $mob_step_num ?>" onclick="toggleMobileSidebar()" class="w-10 h-10 flex items-center justify-center bg-sky-100 text-sky-600 rounded-xl font-black text-xl hover:bg-sky-600 hover:text-white transition-all flex-shrink-0">+</a>
+            <a href="add.php?step=<?= $mob_step_num ?>" onclick="toggleMobileSidebar()" class="w-10 h-10 flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl font-black text-lg transition-all flex-shrink-0 border border-sky-100">+</a>
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
 
         <?php if ($_SESSION['role'] == 'Manager'): ?>
-        <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest px-4 mt-6 mb-3">Otorisasi</p>
-        <a href="index.php?filter=waiting" onclick="toggleMobileSidebar()" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($mob_filter == 'waiting') ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-rose-50' ?>">
-            <span class="text-xl">⚖️</span>
+        <p class="text-xs font-black text-rose-600 uppercase tracking-widest px-4 mt-8 mb-4">Otorisasi</p>
+        <a href="index.php?filter=waiting" onclick="toggleMobileSidebar()" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl mb-2 <?= ($mob_filter == 'waiting') ? 'bg-rose-600 text-white' : 'text-slate-700 hover:bg-rose-50' ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
             <span class="font-bold text-sm">Butuh Approval</span>
         </a>
         <?php endif; ?>
 
-        <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest px-4 mt-6 mb-3">Administrasi</p>
-        <a href="add.php" onclick="toggleMobileSidebar()" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($current_page == 'add.php') ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
-            <span class="text-xl">➕</span>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mt-8 mb-4">Administrasi</p>
+        <a href="add.php" onclick="toggleMobileSidebar()" class="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl mb-2 <?= ($current_page == 'add.php') ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-700 hover:bg-slate-50' ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
             <span class="font-bold text-sm">Laporan Baru</span>
         </a>
-        <a href="archive.php" onclick="toggleMobileSidebar()" class="flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 <?= ($current_page == 'archive.php') ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
-            <span class="text-xl">📁</span>
+        <a href="archive.php" onclick="toggleMobileSidebar()" class="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl mb-2 <?= ($current_page == 'archive.php') ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-50' ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+            </svg>
             <span class="font-bold text-sm">Riwayat Arsip</span>
         </a>
     </nav>
 
     <!-- Role Switcher -->
     <div class="p-4 border-t border-slate-100">
-        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Simulasi Role</p>
+        <p class="text-xs font-black text-slate-650 uppercase tracking-widest mb-3 text-center">Simulasi Role</p>
         <div class="grid grid-cols-3 gap-2">
-            <a href="?switch_role=Pekerja_Lapangan" class="py-3 rounded-xl text-[10px] font-black text-center <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500' ?>">👷<br>Teknisi</a>
-            <a href="?switch_role=Admin_Entry" class="py-3 rounded-xl text-[10px] font-black text-center <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500' ?>">👤<br>Admin</a>
-            <a href="?switch_role=Manager" class="py-3 rounded-xl text-[10px] font-black text-center <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500' ?>">👑<br>Manajer</a>
+            <a href="?switch_role=Pekerja_Lapangan" class="py-2 rounded-xl text-xs font-bold text-center flex flex-col items-center justify-center gap-1.5 <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/10' : 'bg-slate-50 text-slate-700 border border-slate-200' ?>">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" /></svg>
+                <span>Teknisi</span>
+            </a>
+            <a href="?switch_role=Admin_Entry" class="py-2 rounded-xl text-xs font-bold text-center flex flex-col items-center justify-center gap-1.5 <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/10' : 'bg-slate-50 text-slate-700 border border-slate-200' ?>">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                <span>Admin</span>
+            </a>
+            <a href="?switch_role=Manager" class="py-2 rounded-xl text-xs font-bold text-center flex flex-col items-center justify-center gap-1.5 <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/10' : 'bg-slate-50 text-slate-700 border border-slate-200' ?>">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 11l2 2 4-4" /></svg>
+                <span>Manajer</span>
+            </a>
         </div>
     </div>
 </div>
@@ -307,40 +275,33 @@ $mob_page   = $current_page;
 
     <!-- Desktop Sidebar: Clean Mineral White Style -->
     <div id="mobileSidebar" class="w-64 bg-white border-r border-slate-200 flex-col flex-shrink-0 shadow-sm no-print sidebar-container hidden md:flex relative z-50 h-full transition-transform duration-300">
-        <div class="p-8 bg-white flex items-center gap-4 border-b border-slate-100">
-            <div class="w-12 h-12 bg-sky-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-sky-600/20 text-white font-black">
+        <div class="p-6 bg-white flex items-center gap-3.5 border-b border-slate-100">
+            <div class="w-10 h-10 bg-sky-600 rounded-xl flex items-center justify-center text-lg shadow-lg shadow-sky-600/20 text-white font-black">
                 MP
             </div>
             <div>
-                <h1 class="text-xl font-black tracking-tight text-slate-800 leading-none">QC-DMS</h1>
-                <p class="text-[10px] text-sky-500 uppercase tracking-[0.2em] font-black mt-1">Mineral Pure</p>
+                <h1 class="text-lg font-black tracking-tight text-slate-800 leading-none">QC-DMS</h1>
+                <p class="text-xs text-sky-500 uppercase tracking-[0.2em] font-black mt-1">Mineral Pure</p>
             </div>
         </div>
         
-        <nav class="flex-grow py-8 px-4 overflow-y-auto">
+        <nav class="flex-grow py-6 px-4 overflow-y-auto">
             <ul class="space-y-2">
                 <li>
                     <a href="index.php" 
-                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-sky-600 text-white shadow-xl shadow-sky-600/20' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
-                        <span class="text-lg">📊</span>
-                        <span class="font-bold text-sm uppercase tracking-wide">Ringkasan Utama</span>
+                       class="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= ($current_page == 'index.php' && !isset($_GET['filter'])) ? 'bg-sky-600 text-white shadow-md shadow-sky-600/10' : 'text-slate-600 hover:bg-slate-50 hover:text-sky-600' ?>">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                        </svg>
+                        <span class="font-bold text-xs uppercase tracking-wide">Ringkasan Utama</span>
                     </a>
                 </li>
 
-                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] px-5 mt-10 mb-4">ALUR KERJA MUTU</p>
+                <li class="pt-6 pb-2 px-4 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">ALUR KERJA MUTU</li>
                 
-                <?php
-                $steps = [
-                    'step1' => ['01', 'Sampling (Batch)', '📄'],
-                    'step2' => ['02', 'Uji Laboratorium', '🧪'],
-                    'step3' => ['03', 'Diagnosis Masalah', '⚙️'],
-                    'step4' => ['04', 'Perbaikan Teknik', '🔧'],
-                    'step5' => ['05', 'Uji Verifikasi', '🔬'],
-                    'step6' => ['06', 'Approval Final', '⚖️'],
-                ];
-                foreach ($steps as $key => $val):
+                <?php foreach ($steps_config as $key => $val):
                     $is_active = (isset($_GET['filter']) && $_GET['filter'] == $key);
-                    $step_num = (int)substr($key, 4);
+                    $step_num = $val['step_val'];
                     
                     $can_add = false;
                     if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($step_num, [1, 3, 4, 5])) $can_add = true;
@@ -349,72 +310,84 @@ $mob_page   = $current_page;
                 <li>
                     <div class="flex items-center gap-1 group">
                         <a href="index.php?filter=<?= $key ?>" 
-                           class="flex-grow flex items-center gap-5 px-5 py-4 rounded-2xl transition-all duration-200 <?= $is_active ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
-                            <span class="text-lg font-black <?= $is_active ? 'text-white' : 'text-sky-200' ?>"><?= $val[0] ?></span>
-                            <span class="font-bold text-xs uppercase tracking-tight"><?= $val[1] ?></span>
+                           class="flex-grow flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= $is_active ? 'bg-sky-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-sky-600' ?>">
+                            <span class="text-xs font-black px-1.5 py-0.5 rounded <?= $is_active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600' ?>"><?= $val['num'] ?></span>
+                            <svg class="w-4 h-4 flex-shrink-0 <?= $is_active ? 'text-white' : 'text-sky-500' ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <?= $val['svg'] ?>
+                            </svg>
+                            <span class="font-bold text-[13px] uppercase tracking-tight"><?= $val['title'] ?></span>
                         </a>
                         <?php if ($can_add): ?>
-                        <a href="add.php?step=<?= $step_num ?>" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-sky-600 font-bold transition-all text-xl" title="Input Baru">+</a>
+                        <a href="add.php?step=<?= $step_num ?>" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-sky-600 font-bold transition-all text-lg rounded-lg hover:bg-slate-100" title="Input Baru">+</a>
                         <?php endif; ?>
                     </div>
                 </li>
                 <?php endforeach; ?>
 
                 <?php if ($_SESSION['role'] == 'Manager'): ?>
-                <p class="text-[10px] font-black text-rose-400 uppercase tracking-[0.3em] px-5 mt-10 mb-4">OTORISASI</p>
+                <li class="pt-6 pb-2 px-4 text-xs font-black text-rose-600 uppercase tracking-[0.2em]">OTORISASI</li>
                 <li>
                     <a href="index.php?filter=waiting" 
-                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'waiting') ? 'bg-rose-600 text-white shadow-xl shadow-rose-600/20' : 'text-slate-500 hover:bg-rose-50 hover:text-rose-600' ?>">
-                        <span class="text-lg">⚖️</span>
-                        <span class="font-bold text-sm uppercase tracking-wide">Butuh Approval</span>
+                       class="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= (isset($_GET['filter']) && $_GET['filter'] == 'waiting') ? 'bg-rose-600 text-white shadow-md shadow-rose-600/10' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-600' ?>">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        <span class="font-bold text-xs uppercase tracking-wide">Butuh Approval</span>
                     </a>
                 </li>
                 <?php endif; ?>
 
-                <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] px-5 mt-10 mb-4">ADMINISTRASI</p>
+                <li class="pt-6 pb-2 px-4 text-xs font-black text-slate-500 uppercase tracking-[0.2em]">ADMINISTRASI</li>
                 <li>
                     <a href="add.php" 
-                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= $current_page == 'add.php' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-sky-600 hover:text-white' ?>">
-                        <span class="text-lg">➕</span>
-                        <span class="font-bold text-sm uppercase tracking-wide">Laporan Baru</span>
+                       class="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= $current_page == 'add.php' ? 'bg-slate-950 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' ?>">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-bold text-xs uppercase tracking-wide">Laporan Baru</span>
                     </a>
                 </li>
                 <li>
                     <a href="archive.php" 
-                       class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 <?= $current_page == 'archive.php' ? 'bg-sky-600 text-white shadow-xl shadow-sky-600/20' : 'text-slate-500 hover:bg-sky-50 hover:text-sky-600' ?>">
-                        <span class="text-lg">📁</span>
-                        <span class="font-bold text-sm uppercase tracking-wide">Riwayat Arsip</span>
+                       class="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= $current_page == 'archive.php' ? 'bg-sky-600 text-white shadow-md shadow-sky-600/10' : 'text-slate-600 hover:bg-slate-50 hover:text-sky-600' ?>">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                        </svg>
+                        <span class="font-bold text-xs uppercase tracking-wide">Riwayat Arsip</span>
                     </a>
                 </li>
             </ul>
-        </nav>
 
-        <!-- Role Switcher (Desktop Enhanced) -->
-        <div class="p-6 bg-slate-100 border-t border-slate-200 m-4 rounded-3xl">
-            <p class="text-[11px] font-black text-slate-500 uppercase mb-4 text-center tracking-[0.2em]">Pindah Simulasi Role</p>
-            <div class="flex flex-col gap-3">
-                <a href="?switch_role=Pekerja_Lapangan" 
-                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-emerald-600 hover:border-emerald-200' ?>">
-                   👷 TEKNISI LAPANGAN
-                </a>
-                <a href="?switch_role=Admin_Entry" 
-                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white shadow-sky-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-sky-600 hover:border-sky-200' ?>">
-                   👤 ADMIN QC / LAB
-                </a>
-                <a href="?switch_role=Manager" 
-                   class="block py-4 rounded-2xl text-xs font-black text-center transition-all shadow-sm <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-400 border border-slate-200 hover:text-rose-600 hover:border-rose-200' ?>">
-                   👑 PRODUKSI MANAJER
-                </a>
+            <!-- Role Switcher (Desktop Enhanced - Moved Inside Scrollable Nav Container) -->
+            <div class="p-4 bg-slate-50 border border-slate-100 mt-8 rounded-2xl">
+                <p class="text-xs font-black text-slate-650 uppercase mb-3 text-center tracking-[0.2em]">Simulasi Role</p>
+                <div class="flex flex-col gap-2">
+                    <a href="?switch_role=Pekerja_Lapangan" 
+                       class="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-amber-600 text-white border-amber-700 shadow-amber-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-amber-850 hover:border-amber-300' ?>">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" /></svg>
+                       TEKNISI
+                    </a>
+                    <a href="?switch_role=Admin_Entry" 
+                       class="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white border-sky-700 shadow-sky-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-sky-850 hover:border-sky-300' ?>">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                       ADMIN QC
+                    </a>
+                    <a href="?switch_role=Manager" 
+                       class="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white border-rose-700 shadow-rose-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-rose-850 hover:border-rose-300' ?>">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 11l2 2 4-4" /></svg>
+                       MANAJER
+                    </a>
+                </div>
             </div>
-        </div>
+        </nav>
     </div>
 
     <!-- Main Content Wrapper -->
     <div class="flex-grow flex flex-col h-screen overflow-hidden w-full">
         <!-- Desktop Topbar -->
-        <header class="h-16 bg-white border-b border-gray-200 items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 no-print desktop-topbar hidden md:flex">
+        <header class="h-16 bg-white border-b border-slate-200 items-center justify-between px-4 md:px-8 flex-shrink-0 z-10 no-print desktop-topbar hidden md:flex">
             <div class="flex items-center gap-4">
-                <h2 class="text-xl font-bold text-slate-800 truncate">
+                <h2 class="text-lg font-black text-slate-800 truncate">
                     <?php 
                         if($current_page == 'index.php') echo "File & Report Manager";
                         elseif($current_page == 'add.php') echo "Upload Quality Control";
@@ -422,16 +395,16 @@ $mob_page   = $current_page;
                     ?>
                 </h2>
                 <?php if ($_SESSION['role'] == 'Manager'): ?>
-                    <span class="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-200">MANAGER ACCESS</span>
+                    <span class="bg-orange-50 text-orange-800 text-xs font-black px-2 py-0.5 rounded-full border border-orange-100">MANAGER ACCESS</span>
                 <?php endif; ?>
             </div>
             
             <div class="flex items-center gap-4">
-                <div class="text-right border-r border-gray-200 pr-4">
-                    <p class="text-sm font-bold text-slate-900"><?= $role_name ?></p>
-                    <p class="text-[10px] text-gray-500">QC Department • Manufacturing Unit</p>
+                <div class="text-right border-r border-slate-200 pr-4">
+                    <p class="text-sm font-black text-slate-900 leading-none"><?= $role_name ?></p>
+                    <p class="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider">QC Department &bull; Manufacturing</p>
                 </div>
-                <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold">
+                <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 font-black border border-slate-200 text-sm">
                     <?= substr($role_name, 0, 1) ?>
                 </div>
             </div>
@@ -452,4 +425,4 @@ $mob_page   = $current_page;
                     drawer.classList.toggle('-translate-x-full');
                     overlay.classList.toggle('hidden');
                 }
-            </script>
+            </script>
