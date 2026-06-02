@@ -103,6 +103,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
+
+// Mapping step ke file template form kosong PDF
+$template_pdf_map = [
+    '1' => 'uploads/CATATAN PRODUKSI (SAMPLING).pdf',
+    '2' => 'uploads/ANALISIS LABORATORIUM UTAMA.pdf',
+    '3' => 'uploads/DIAGNOSIS MASALAH (INVESTIGASI).pdf',
+    '4' => 'uploads/TINDAKAN PERBAIKAN TEKNIK.pdf',
+    '5' => 'uploads/VERIFIKASI UJI ULANG (RE-TEST).pdf',
+    '6' => 'uploads/OTORISASI & APPROVAL MANAGER.pdf',
+];
+$template_label_map = [
+    '1' => 'Catatan Produksi (Sampling)',
+    '2' => 'Analisis Laboratorium Utama',
+    '3' => 'Diagnosis Masalah (Investigasi)',
+    '4' => 'Tindakan Perbaikan Teknik',
+    '5' => 'Verifikasi Uji Ulang (Re-Test)',
+    '6' => 'Otorisasi & Approval Manager',
+];
+$template_pdf     = $template_pdf_map[$current_step_num] ?? null;
+$template_label   = $template_label_map[$current_step_num] ?? 'Form Kosong';
+$template_exists  = $template_pdf && file_exists($template_pdf);
 ?>
 
 <!DOCTYPE html>
@@ -113,47 +134,129 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
     <title>Input QC - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@500;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;800&display=swap');
         :root { --primary: #0284c7; --bg-main: #f8fafc; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: #1e293b; }
         h1 { font-family: 'Outfit', sans-serif; }
         .form-card { background: white; border-radius: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
         label { display: block; font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem; }
-        input, select, textarea { width: 100%; padding: 1rem 1.25rem; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 1rem; font-weight: 600; color: #1e293b; transition: all 0.2s; background: #fdfdfd; }
+        input, select, textarea {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            transition: all 0.2s;
+            background: #fdfdfd;
+            -webkit-appearance: none;
+            appearance: none;
+        }
         input:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1); background: white; }
-        .btn-save { background: #0f172a; color: white; padding: 1.25rem 3rem; border-radius: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; border: none; }
+        .btn-save {
+            background: #0f172a;
+            color: white;
+            padding: 1.25rem 3rem;
+            border-radius: 20px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+        }
         .btn-save:hover { background: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.2); }
-        .camera-btn { background: #0284c7; color: white; padding: 2rem; border-radius: 24px; text-align: center; cursor: pointer; transition: all 0.2s; border: 4px dashed rgba(255,255,255,0.3); }
-        .camera-btn:hover { background: #0369a1; transform: scale(1.02); }
+        .camera-btn {
+            background: #0284c7;
+            color: white;
+            padding: 2rem;
+            border-radius: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 3px dashed rgba(255,255,255,0.3);
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .camera-btn:active { transform: scale(0.97); background: #0369a1; }
+        /* ---- MOBILE SPECIFIC ---- */
+        @media (max-width: 767px) {
+            .form-card { border-radius: 20px !important; padding: 1.25rem !important; }
+            .form-grid { display: flex !important; flex-direction: column !important; gap: 1.5rem !important; }
+            label { font-size: 0.8rem !important; }
+            input, select, textarea { font-size: 1rem !important; padding: 0.9rem 1rem !important; border-radius: 14px !important; }
+            .camera-btn { min-height: 100px !important; border-radius: 20px !important; padding: 1.5rem !important; }
+            .camera-btn .cam-icon { font-size: 3rem !important; }
+            .camera-btn .cam-label { font-size: 1rem !important; }
+            .verdict-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
+            .verdict-box { padding: 1.2rem 0.5rem !important; border-radius: 16px !important; }
+            .verdict-box .v-icon { font-size: 2rem !important; }
+            .verdict-box .v-label { font-size: 0.85rem !important; }
+            .btn-save { font-size: 1rem !important; padding: 1.1rem !important; border-radius: 16px !important; }
+            .section-card { border-radius: 16px !important; padding: 1rem !important; }
+        }
     </style>
 </head>
 <body class="antialiased">
     <?php include 'sidebar.php'; ?>
 
     <div class="p-4 max-w-5xl mx-auto">
-        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div class="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
             <div>
-                <p class="text-[10px] font-black text-sky-600 uppercase tracking-[0.3em] mb-1">Entry Sistem Mutu</p>
-                <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Input Bukti Lapangan</h1>
+                <!-- Mobile: Back link -->
+                <a href="index.php" class="md:hidden mb-3 flex items-center gap-1 text-slate-400 text-sm font-bold">&#8592; Kembali</a>
+                <p class="text-[10px] font-black text-sky-600 uppercase tracking-[0.3em] mb-1">
+                    Step <?= $current_step_num ?> &bull; <?= htmlspecialchars($template_label) ?>
+                </p>
+                <h1 class="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Input Bukti Lapangan</h1>
+
+                <!-- Mobile: Cetak Form Kosong button (below title) -->
+                <?php if ($template_exists): ?>
+                <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
+                   class="md:hidden mt-3 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 border border-slate-200 text-slate-600 text-xs font-black uppercase rounded-xl no-print">
+                    &#128424; Cetak Form Kosong &rarr;
+                </a>
+                <?php endif; ?>
             </div>
-            <button type="button" onclick="printBlankForm()" class="no-print px-5 py-3 bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all">🖨️ Cetak Form Kosong</button>
+
+            <!-- Desktop: Cetak Form Kosong button -->
+            <?php if ($template_exists): ?>
+            <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
+               class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all group">
+                <span>&#128424;</span>
+                <span>Cetak Form Kosong</span>
+                <span class="text-slate-300 group-hover:text-slate-400 font-normal normal-case tracking-normal">
+                    &mdash; <?= htmlspecialchars($template_label) ?>
+                </span>
+            </a>
+            <?php else: ?>
+            <span class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-slate-50 border border-slate-200 text-slate-300 text-[10px] font-black uppercase rounded-xl cursor-not-allowed"
+                  title="Template PDF tidak ditemukan di folder uploads/">
+                &#128424; Cetak Form Kosong (Tidak Tersedia)
+            </span>
+            <?php endif; ?>
         </div>
 
-        <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-6 md:p-12">
+        <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-5 md:p-12">
             
-            <div class="<?= $is_mobile_mode ? 'flex flex-col gap-10' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
+            <div class="form-grid <?= $is_mobile_mode ? 'flex flex-col gap-8' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
                 
-                <div class="space-y-8">
-                    <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                <div class="space-y-6 md:space-y-8">
+                    <div class="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 section-card">
                         <label>Langkah Alur Kerja</label>
                         <select name="jenis" id="jenisSelect" onchange="window.location.href='add.php?step=' + this.options[this.selectedIndex].getAttribute('data-step')" <?= $is_fixed_step ? 'readonly class="bg-slate-100 pointer-events-none opacity-70"' : '' ?>>
                             <?php foreach ($step_mapping as $k => $val): 
-                                // Filter berdasarkan role untuk transparansi input
                                 $show_option = false;
                                 if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($k, ['1', '3', '4', '5'])) $show_option = true;
                                 if ($_SESSION['role'] == 'Admin_Entry' && $k == '2') $show_option = true;
                                 if ($_SESSION['role'] == 'Manager' && $k == '6') $show_option = true;
-                                
                                 if (!$show_option) continue;
                             ?>
                                 <option value="<?= $val ?>" data-step="<?= $k ?>" <?= ($current_step_num == $k) ? 'selected' : '' ?>><?= $val[0].$val[1] ?>. <?= str_replace('_', ' ', $val) ?></option>
@@ -162,7 +265,7 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
                     </div>
 
                     <?php if ($current_step_num != '1'): ?>
-                    <div class="bg-sky-50 p-6 rounded-3xl border border-sky-100">
+                    <div class="bg-sky-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-sky-100 section-card">
                         <label class="text-sky-700">Pilih Laporan Induk (Batch Sampling)</label>
                         <select name="parent_doc_id" id="parentSelect" required onchange="autoFillMetadata()">
                             <option value="">-- Pilih Batch Yang Sedang Berjalan --</option>
@@ -172,7 +275,7 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="text-[9px] text-sky-500 mt-2 font-bold italic">*Pilih ini agar data Batch & Produk terisi otomatis.</p>
+                        <p class="text-[11px] text-sky-500 mt-2 font-bold italic">*Pilih ini agar data Batch & Produk terisi otomatis.</p>
                     </div>
                     <?php endif; ?>
 
@@ -181,7 +284,7 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
                         <input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                         <div>
                             <label>Lini Produk</label>
                             <select name="produk" id="produkSelect" required>
@@ -212,67 +315,70 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
                     </div>
 
                     <?php if ($current_step_num == '2' || $current_step_num == '5'): ?>
-                    <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                    <div class="p-4 md:p-6 bg-amber-50 rounded-2xl md:rounded-3xl border border-amber-100 section-card">
                         <label class="mb-4 text-amber-900 block font-black">Parameter Lab Aktual</label>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div><label class="text-[9px]">pH</label><input type="number" step="0.1" name="ph" class="p-2 text-sm"></div>
-                            <div><label class="text-[9px]">TDS</label><input type="number" step="1" name="tds" class="p-2 text-sm"></div>
-                            <div><label class="text-[9px]">NTU</label><input type="number" step="0.01" name="kekeruhan" class="p-2 text-sm"></div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div><label class="text-[9px]">pH</label><input type="number" step="0.1" name="ph" class="p-2.5 text-base"></div>
+                            <div><label class="text-[9px]">TDS</label><input type="number" step="1" name="tds" class="p-2.5 text-base"></div>
+                            <div><label class="text-[9px]">NTU</label><input type="number" step="0.01" name="kekeruhan" class="p-2.5 text-base"></div>
                         </div>
                     </div>
                     <?php endif; ?>
                 </div>
 
-                <div class="space-y-10">
+                <div class="space-y-6 md:space-y-10">
+                    <!-- Verdict Selection -->
                     <div>
-                        <label>Hasil Pemeriksaan / Bukti</label>
-                        <div class="flex gap-4">
-                            <label class="flex-grow cursor-pointer group">
+                        <label>Hasil Pemeriksaan</label>
+                        <div class="verdict-grid grid grid-cols-2 gap-3 md:gap-4">
+                            <label class="cursor-pointer">
                                 <input type="radio" name="status" value="Passed" checked class="hidden peer">
-                                <div class="py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
-                                    <span class="block text-2xl mb-1">✓</span>
-                                    <span class="text-[10px] font-black text-slate-400 peer-checked:text-emerald-700 uppercase">Lolos</span>
+                                <div class="verdict-box py-5 md:py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
+                                    <span class="v-icon block text-2xl mb-1">&#10003;</span>
+                                    <span class="v-label text-sm font-black text-slate-400 peer-checked:text-emerald-700 uppercase block">LOLOS</span>
                                 </div>
                             </label>
-                            <label class="flex-grow cursor-pointer group">
+                            <label class="cursor-pointer">
                                 <input type="radio" name="status" value="Reject" class="hidden peer">
-                                <div class="py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all">
-                                    <span class="block text-2xl mb-1">✗</span>
-                                    <span class="text-[10px] font-black text-slate-400 peer-checked:text-rose-700 uppercase">Reject</span>
+                                <div class="verdict-box py-5 md:py-6 border-2 border-slate-100 rounded-2xl text-center peer-checked:border-rose-500 peer-checked:bg-rose-50 transition-all">
+                                    <span class="v-icon block text-2xl mb-1">&#10007;</span>
+                                    <span class="v-label text-sm font-black text-slate-400 peer-checked:text-rose-700 uppercase block">REJECT</span>
                                 </div>
                             </label>
                         </div>
                     </div>
 
-                    <div class="space-y-6">
-                        <label>Lampiran Bukti (Foto/PDF)</label>
-                        <div class="camera-btn" onclick="document.getElementById('fileInput').click()">
-                            <span class="text-4xl block mb-2">📸</span>
-                            <span class="text-sm font-black uppercase tracking-widest">Ambil Foto / Unggah Bukti</span>
-                            <p class="text-[10px] opacity-60 mt-2">Gunakan kamera tablet untuk bukti lapangan</p>
+                    <!-- File Upload -->
+                    <div class="space-y-4">
+                        <label>Lampiran Bukti (Foto / PDF)</label>
+                        <div class="camera-btn" onclick="document.getElementById('fileInput').click()" style="min-height:90px">
+                            <span class="cam-icon text-4xl">&#128248;</span>
+                            <span class="cam-label text-sm font-black uppercase tracking-widest">Ambil Foto / Unggah Bukti</span>
+                            <p class="text-xs opacity-60 mt-1">Kamera tablet atau pilih dari galeri</p>
                         </div>
                         <input type="file" name="dokumen_fisik" id="fileInput" accept="image/*,application/pdf" capture="environment" class="hidden" onchange="updateFileName(this)">
-                        <div id="fileStatus" class="text-center text-xs font-bold text-emerald-600 hidden">✅ File Siap Diunggah</div>
+                        <div id="fileStatus" class="text-center text-sm font-bold text-emerald-600 hidden py-2 bg-emerald-50 rounded-xl border border-emerald-200">&#9989; File Siap Diunggah</div>
                         
-                        <div class="pt-4 border-t border-slate-100">
-                            <label class="text-[9px]">Atau Gunakan Tautan Cloud (G-Drive)</label>
-                            <input type="url" name="external_link" placeholder="https://..." class="p-3 text-sm">
+                        <div class="pt-3 border-t border-slate-100">
+                            <label class="text-[10px]">Atau Gunakan Tautan Cloud (G-Drive, dll)</label>
+                            <input type="url" name="external_link" placeholder="https://drive.google.com/..." class="p-3 text-sm">
                         </div>
                     </div>
 
+                    <!-- Notes -->
                     <div>
                         <label>Catatan Temuan Lapangan</label>
-                        <textarea name="deskripsi" rows="4" placeholder="Tuliskan catatan atau kendala di sini..."></textarea>
+                        <textarea name="deskripsi" rows="3" placeholder="Tuliskan catatan atau kendala di sini..." style="min-height:80px"></textarea>
                     </div>
                 </div>
 
             </div>
 
-            <div class="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                <p class="text-[10px] text-slate-400 font-bold italic">Pastikan data & foto sudah benar sebelum menyimpan.</p>
-                <div class="flex gap-4 w-full md:w-auto">
-                    <a href="index.php" class="flex-grow md:flex-grow-0 px-8 py-4 text-center text-xs font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Batal</a>
-                    <button type="submit" class="btn-save flex-grow md:flex-grow-0">Kirim Laporan</button>
+            <div class="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-[10px] text-slate-400 font-bold italic hidden md:block">Pastikan data & foto sudah benar sebelum menyimpan.</p>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <a href="index.php" class="flex-grow md:flex-grow-0 px-6 py-4 text-center text-sm font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all border border-slate-200 rounded-2xl">Batal</a>
+                    <button type="submit" class="btn-save flex-grow md:flex-grow-0 md:w-auto">&#128228; Kirim Laporan</button>
                 </div>
             </div>
         </form>
@@ -311,11 +417,7 @@ $is_mobile_mode = in_array($current_step_num, ['1', '3', '4', '5']);
             }
         }
 
-        function printBlankForm() {
-            const jenisSelect = document.getElementById('jenisSelect');
-            alert('Membuka Template Cetak Formal untuk ' + jenisSelect.options[jenisSelect.selectedIndex].text);
-            window.print();
-        }
+
     </script>
 </body>
 </html>

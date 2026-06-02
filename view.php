@@ -70,23 +70,43 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
     <style>
         @media print {
             @page { margin: 0; size: auto; }
-            .no-print, .no-print *, nav, aside, header, .action-area, .sidebar-container { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
+            .no-print, .no-print *, nav, aside, header, .action-area, .sidebar-container, .mobile-topbar, .mobile-bottom-nav { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             #reportContent { display: block !important; border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; padding: 0.4in !important; transform: none !important; }
             main { padding: 0 !important; margin: 0 !important; }
         }
         .metadata-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .metadata-content.open { max-height: 2000px; }
+
+        /* Mobile sticky bottom action bar */
+        .mobile-action-bar {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: white;
+            padding: 0.75rem 1rem env(safe-area-inset-bottom, 0.75rem);
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+            z-index: 90;
+            gap: 0.75rem;
+        }
+        @media (max-width: 767px) {
+            .mobile-action-bar { display: flex !important; }
+            .desktop-action-toolbar { display: none !important; }
+            .doc-preview-box { height: 320px !important; }
+            .view-container { padding: 1rem !important; padding-bottom: 100px !important; }
+            .meta-grid { grid-template-columns: 1fr !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
     <?php include 'sidebar.php'; ?>
 
-    <div class="max-w-5xl mx-auto py-8 px-8">
-        <!-- Navigation Top (Digital Only) -->
-        <div class="mb-8 no-print">
-            <a href="index.php" class="text-slate-400 hover:text-blue-600 transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                <span>←</span> Kembali ke Dashboard
+    <div class="max-w-5xl mx-auto py-4 md:py-8 px-4 md:px-8 view-container">
+        <!-- Mobile top back button -->
+        <div class="mb-4 flex items-center gap-3 no-print">
+            <a href="index.php" class="flex items-center gap-2 font-bold text-slate-400 hover:text-blue-600 transition-all text-sm md:text-[10px] md:uppercase md:tracking-widest">
+                <span>&#8592;</span> <span class="hidden md:inline">Kembali ke Dashboard</span><span class="md:hidden">Kembali</span>
             </a>
         </div>
 
@@ -119,61 +139,85 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
         <!-- DOCUMENT PREVIEW HERO (Prioritas Dokumen Asli) -->
         <?php if (!empty($doc['file_path']) || !empty($doc['external_link'])): ?>
-        <div class="mb-12 no-print">
-            <div class="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-800">
-                <div class="p-4 bg-slate-800 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xl">📸</span>
-                        <h4 class="text-xs font-black text-white uppercase tracking-widest">Pratinjau Foto / Dokumen Bukti (Asli Lapangan)</h4>
+        <div class="mb-6 md:mb-12 no-print">
+            <div class="bg-slate-900 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border-2 md:border-4 border-slate-800">
+                <div class="p-3 md:p-4 bg-slate-800 flex justify-between items-center">
+                    <div class="flex items-center gap-2 md:gap-3">
+                        <span class="text-lg md:text-xl">&#128248;</span>
+                        <h4 class="text-xs font-black text-white uppercase tracking-widest">Foto / Dokumen Bukti Asli</h4>
                     </div>
                     <?php if (!empty($doc['external_link'])): ?>
-                        <a href="<?= htmlspecialchars($doc['external_link']) ?>" target="_blank" class="text-[10px] font-black text-blue-400 hover:text-white transition-all uppercase">Buka di Tab Baru ↗</a>
+                        <a href="<?= htmlspecialchars($doc['external_link']) ?>" target="_blank" class="text-[10px] font-black text-blue-400 hover:text-white transition-all uppercase">Buka &#8599;</a>
                     <?php endif; ?>
                 </div>
-                <div class="bg-slate-700 h-[600px] flex items-center justify-center overflow-hidden">
+                <div class="bg-slate-700 doc-preview-box" style="height:500px" >
                     <?php if (!empty($doc['file_path'])): ?>
                         <?php 
                         $ext = strtolower(pathinfo($doc['file_path'], PATHINFO_EXTENSION));
                         if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])): ?>
-                            <img src="<?= htmlspecialchars($doc['file_path']) ?>" class="max-w-full max-h-full object-contain">
+                            <img src="<?= htmlspecialchars($doc['file_path']) ?>" class="w-full h-full object-contain" style="display:block">
                         <?php else: ?>
                             <iframe src="<?= htmlspecialchars($doc['file_path']) ?>" class="w-full h-full border-none"></iframe>
                         <?php endif; ?>
                     <?php elseif (!empty($doc['external_link'])): ?>
-                        <iframe src="<?= htmlspecialchars($doc['external_link']) ?>" class="w-full h-full border-none bg-white"></iframe>
+                        <div class="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+                            <span class="text-5xl">&#9729;&#65039;</span>
+                            <p class="text-white font-bold text-sm">Dokumen disimpan di Cloud</p>
+                            <a href="<?= htmlspecialchars($doc['external_link']) ?>" target="_blank" class="px-6 py-3 bg-blue-600 text-white font-black text-sm rounded-xl uppercase">Buka Dokumen &#8599;</a>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
         <?php endif; ?>
 
-        <!-- ACTION TOOLBAR (Central Position) -->
-        <div class="mb-12 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 no-print action-area">
+        <!-- ACTION TOOLBAR - Desktop (hidden on mobile) -->
+        <div class="mb-8 md:mb-12 flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 no-print action-area desktop-action-toolbar hidden md:flex">
             <?php if (!empty($doc['file_path'])): ?>
                 <a href="<?= htmlspecialchars($doc['file_path']) ?>" download class="w-full sm:w-auto justify-center px-8 md:px-12 py-4 md:py-5 bg-blue-600 text-white text-xs md:text-sm font-black uppercase rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/30 flex items-center gap-3">
-                    <span class="text-2xl">📥</span> Unduh Dokumen Bukti (Asli)
+                    <span class="text-2xl">&#128229;</span> Unduh Dokumen Bukti (Asli)
                 </a>
             <?php else: ?>
                 <button onclick="window.print()" class="w-full sm:w-auto justify-center px-8 md:px-10 py-4 bg-white border-2 border-slate-200 text-slate-700 text-xs font-black uppercase rounded-2xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3">
-                    <span class="text-xl">🖨️</span> Cetak Ringkasan Digital
+                    <span class="text-xl">&#128424;&#65039;</span> Cetak Ringkasan Digital
+                </button>
+            <?php endif; ?>
+        </div>
+
+        <!-- MOBILE STICKY ACTION BAR (visible only on mobile) -->
+        <div class="mobile-action-bar no-print">
+            <a href="index.php" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-600 font-black text-sm uppercase">
+                &#8592; Kembali
+            </a>
+            <?php if (!empty($doc['file_path'])): ?>
+                <a href="<?= htmlspecialchars($doc['file_path']) ?>" download class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-black text-sm uppercase shadow-lg">
+                    &#128229; Unduh
+                </a>
+            <?php elseif (!empty($doc['external_link'])): ?>
+                <a href="<?= htmlspecialchars($doc['external_link']) ?>" target="_blank" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-sky-600 text-white rounded-xl font-black text-sm uppercase shadow-lg">
+                    &#9729; Buka Link
+                </a>
+            <?php else: ?>
+                <button onclick="window.print()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-white rounded-xl font-black text-sm uppercase">
+                    &#128424; Cetak
                 </button>
             <?php endif; ?>
         </div>
 
         <!-- COLLAPSIBLE METADATA (Digital Summary) -->
-        <div class="no-print mb-24">
-            <button onclick="toggleMetadata()" class="w-full py-4 px-6 bg-slate-100 hover:bg-slate-200 rounded-2xl flex justify-between items-center transition-all border border-slate-200">
-                <div class="flex items-center gap-4">
-                    <span class="text-lg">📋</span>
-                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Ringkasan Metadata Sistem (Klik untuk Detail)</h4>
+        <div class="no-print mb-16 md:mb-24">
+            <button onclick="toggleMetadata()" class="w-full py-4 px-5 md:px-6 bg-slate-100 hover:bg-slate-200 rounded-xl md:rounded-2xl flex justify-between items-center transition-all border border-slate-200">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg">&#128203;</span>
+                    <h4 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Ringkasan Metadata Sistem</h4>
                 </div>
-                <span id="metaArrow" class="transform transition-transform duration-300">▼</span>
+                <span id="metaArrow" class="transform transition-transform duration-300 text-slate-400">&#9660;</span>
             </button>
 
-            <div id="metadataSection" class="metadata-content mt-6">
+            <div id="metadataSection" class="metadata-content mt-4 md:mt-6">
                 
                 <!-- METADATA UNTUK TAMPILAN LAYAR (UI MODERN) -->
-                <div class="no-print grid grid-cols-1 md:grid-cols-2 gap-6 p-2 mb-8">
+                <div class="no-print grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-1 md:p-2 mb-8 meta-grid">
                     
                     <!-- KARTU 1: PROPERTI FILE -->
                     <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">

@@ -78,6 +78,61 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
         .btn-filter.active { background: var(--primary); color: white; }
         .btn-filter:not(.active) { background: white; color: #64748b; border: 1px solid #e2e8f0; }
         .btn-filter:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+        /* ---- MOBILE DOCUMENT CARD ---- */
+        .doc-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            padding: 1rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            transition: all 0.15s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .doc-card:active { transform: scale(0.98); background: #f8fafc; }
+        .doc-card .card-title { font-size: 0.95rem; font-weight: 700; color: #1e293b; line-height: 1.3; }
+        .doc-card .card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+        .doc-card .card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+        .doc-card .open-btn { 
+            padding: 0.5rem 1.2rem; 
+            background: #0284c7;
+            color: white; 
+            border-radius: 12px; 
+            font-size: 0.75rem; 
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-pill {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge-step { background: #f1f5f9; color: #64748b; }
+        .badge-file { background: #f1f5f9; color: #64748b; }
+        .badge-link { background: #e0f2fe; color: #0284c7; }
+        .badge-passed { background: #d1fae5; color: #047857; }
+        .badge-reject { background: #fee2e2; color: #b91c1c; }
+        .badge-waiting { background: #fef3c7; color: #b45309; }
+
+        /* Hide/show based on screen size */
+        @media (max-width: 767px) {
+            .desktop-table-area { display: none !important; }
+            .mobile-cards-area { display: flex !important; }
+            /* Compact stat cards on mobile */
+            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
+            .stat-card { padding: 1rem !important; border-radius: 18px !important; }
+            .stat-card h3 { font-size: 2rem !important; }
+        }
+        @media (min-width: 768px) {
+            .mobile-cards-area { display: none !important; }
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -111,42 +166,45 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
         </div>
 
         <!-- Stat Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12 stat-grid">
             <div class="stat-card border-l-4 border-l-sky-500 group">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-sky-500 transition-colors">Total Laporan</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-sky-500 transition-colors">Total</p>
                 <h3 class="text-4xl font-extrabold text-slate-900"><?= $total_docs ?></h3>
-                <p class="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">Arsip Keseluruhan</p>
+                <p class="text-[9px] text-slate-400 mt-1 font-bold uppercase tracking-tighter">Laporan</p>
             </div>
             <div class="stat-card border-emerald-100 bg-emerald-50/20 border-l-4 border-l-emerald-500 group">
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Lolos Bulan Ini</p>
+                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lolos</p>
                 <h3 class="text-4xl font-extrabold text-emerald-700"><?= $inspeksi_bulan_ini ?></h3>
-                <p class="text-[9px] text-emerald-600/50 mt-2 font-bold uppercase tracking-tighter">Kualitas Terjaga</p>
+                <p class="text-[9px] text-emerald-600/50 mt-1 font-bold uppercase tracking-tighter">Bulan Ini</p>
             </div>
             <div class="stat-card border-rose-100 bg-rose-50/20 border-l-4 border-l-rose-500 group">
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Temuan Reject</p>
+                <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Reject</p>
                 <h3 class="text-4xl font-extrabold text-rose-700"><?= $total_reject ?></h3>
-                <p class="text-[9px] text-rose-600/50 mt-2 font-bold uppercase tracking-tighter">Butuh Tindak Lanjut</p>
+                <p class="text-[9px] text-rose-600/50 mt-1 font-bold uppercase tracking-tighter">Tindak Lanjut</p>
             </div>
             <div class="stat-card border-amber-100 bg-amber-50/20 border-l-4 border-l-amber-500 group">
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 group-hover:translate-x-1 transition-transform">Butuh Approval</p>
+                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Approval</p>
                 <h3 class="text-4xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
-                <p class="text-[9px] text-amber-600/50 mt-2 font-bold uppercase tracking-tighter">Otorisasi Manajer</p>
+                <p class="text-[9px] text-amber-600/50 mt-1 font-bold uppercase tracking-tighter">Menunggu</p>
             </div>
         </div>
 
-        <!-- Table Controls -->
-        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 md:p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
-                <div class="flex flex-wrap justify-center gap-2">
-                    <a href="index.php" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua Data</a>
-                    <a href="index.php?filter=waiting" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Butuh Approval</a>
-                </div>
-                <form action="" method="GET" class="relative w-full md:w-auto">
-                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Cari Kode / Produk..." class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-sky-500 outline-none w-full md:w-64 transition-all">
-                    <span class="absolute left-3 top-2.5 opacity-30">🔍</span>
-                </form>
+        <!-- Controls Bar (Search + Filter) -->
+        <div class="mb-4 flex flex-col sm:flex-row gap-3">
+            <div class="flex flex-wrap gap-2">
+                <a href="index.php" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua</a>
+                <a href="index.php?filter=waiting" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Perlu Approval</a>
             </div>
+            <form action="" method="GET" class="relative flex-grow">
+                <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari laporan, kode, produk..." class="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:border-sky-500 outline-none w-full transition-all">
+                <span class="absolute left-3 top-3 text-slate-300 text-base">&#128269;</span>
+            </form>
+        </div>
 
+        <!-- ============================================================ -->
+        <!-- DESKTOP TABLE VIEW (hidden on mobile) -->
+        <!-- ============================================================ -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden desktop-table-area">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[800px]">
                 <thead>
@@ -175,17 +233,11 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
                                     <span class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-tighter">
                                         <?= str_replace('_', ' ', $file['jenis']) ?>
                                     </span>
-                                    
-                                    <!-- SOURCE INDICATOR -->
                                     <?php if (!empty($file['file_path'])): ?>
-                                        <span class="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase tracking-tighter" title="Dokumen Fisik (Upload)">
-                                            📄 FILE
-                                        </span>
+                                        <span class="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase tracking-tighter">&#128196; FILE</span>
                                     <?php endif; ?>
                                     <?php if (!empty($file['external_link'])): ?>
-                                        <span class="flex items-center gap-1 px-2 py-1 bg-sky-100 rounded text-[8px] font-black text-sky-600 uppercase tracking-tighter" title="Dokumen Cloud (Link)">
-                                            ☁️ LINK
-                                        </span>
+                                        <span class="flex items-center gap-1 px-2 py-1 bg-sky-100 rounded text-[8px] font-black text-sky-600 uppercase tracking-tighter">&#9729;&#65039; LINK</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -211,9 +263,63 @@ $waiting_approval = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_s
 
             <?php if (empty($files)): ?>
                 <div class="py-20 text-center bg-slate-50/50">
-                    <p class="text-4xl mb-4">🧊</p>
+                    <p class="text-4xl mb-4">&#129416;</p>
                     <p class="text-xs font-black text-slate-300 uppercase tracking-widest">Tidak Ada Laporan Yang Ditemukan</p>
                 </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- MOBILE CARD VIEW (hidden on desktop) -->
+        <!-- ============================================================ -->
+        <div class="mobile-cards-area flex-col gap-3" style="display:none">
+            <?php if (empty($files)): ?>
+                <div class="py-16 text-center bg-white rounded-3xl border border-slate-200">
+                    <p class="text-5xl mb-3">&#129416;</p>
+                    <p class="text-sm font-black text-slate-300 uppercase tracking-widest">Tidak Ada Laporan</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($files as $file): 
+                    $is_passed = ($file['status'] == 'Lolos' || $file['status'] == 'Passed');
+                    $is_approval = ($file['jenis'] == 'Approval_Manager');
+                    $is_approved = ($file['approval_status'] == 'Approved');
+                    $is_waiting  = ($file['approval_status'] == 'Waiting Approval');
+                ?>
+                <a href="view.php?id=<?= $file['id'] ?>" class="doc-card">
+                    <!-- Top Row: Document Name -->
+                    <div class="card-title"><?= htmlspecialchars($file['nama_dokumen']) ?></div>
+                    
+                    <!-- Meta Row: Code + Type -->
+                    <div class="card-meta">
+                        <span class="badge-pill badge-step"><?= str_replace('_', ' ', $file['jenis']) ?></span>
+                        <span style="color:#cbd5e1;font-size:10px;">•</span>
+                        <span style="font-size:0.7rem;font-weight:700;color:#0284c7;text-transform:uppercase"><?= str_replace('_', ' ', $file['produk']) ?></span>
+                        <?php if (!empty($file['file_path'])): ?>
+                            <span class="badge-pill badge-file">&#128196; File</span>
+                        <?php endif; ?>
+                        <?php if (!empty($file['external_link'])): ?>
+                            <span class="badge-pill badge-link">&#9729; Link</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Bottom Row: Status + Action -->
+                    <div class="card-bottom">
+                        <div style="display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:0.65rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em"><?= htmlspecialchars($file['no_dokumen']) ?></span>
+                            <?php if ($is_approval): ?>
+                                <span class="badge-pill <?= $is_approved ? 'badge-passed' : ($is_waiting ? 'badge-waiting' : 'badge-reject') ?>">
+                                    <?= $is_approved ? '✓ Approved' : ($is_waiting ? '⏳ Waiting' : $file['approval_status']) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge-pill <?= $is_passed ? 'badge-passed' : 'badge-reject' ?>">
+                                    <?= $is_passed ? '✓ LOLOS' : '✗ REJECT' ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <span class="open-btn">BUKA</span>
+                    </div>
+                </a>
+                <?php endforeach; ?>
             <?php endif; ?>
         </div>
     </main>
