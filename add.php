@@ -125,12 +125,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $folder_path = "QC_AMDK/{$produk}/{$tahun}/{$bulan}";
 
     if ($jenis == 'Approval_Manager') {
-        $approval_status = 'Approved';
-        $status = 'Archived';
-        // Update parent document status to Archived as well
-        if ($parent_doc_id) {
-            $stmtUpdate = $pdo->prepare("UPDATE documents SET status = 'Archived', approval_status = 'Approved' WHERE id = ?");
-            $stmtUpdate->execute([$parent_doc_id]);
+        if ($status_mutu == 'Reject') {
+            $approval_status = 'Rejected';
+            $status = 'Archived';
+            if ($parent_doc_id) {
+                $stmtUpdate = $pdo->prepare("UPDATE documents SET status = 'Archived', approval_status = 'Rejected' WHERE id = ?");
+                $stmtUpdate->execute([$parent_doc_id]);
+            }
+        } else {
+            $approval_status = 'Approved';
+            $status = 'Archived';
+            if ($parent_doc_id) {
+                $stmtUpdate = $pdo->prepare("UPDATE documents SET status = 'Archived', approval_status = 'Approved' WHERE id = ?");
+                $stmtUpdate->execute([$parent_doc_id]);
+            }
         }
     } elseif ($jenis == 'Diagnosis_Mesin') {
         $approval_status = 'Waiting Approval';
@@ -383,10 +391,10 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                 </div>
 
                 <div class="space-y-6 md:space-y-10">
-                    <!-- Verdict Selection (Hanya untuk Langkah 02 & 05) -->
-                    <?php if ($current_step_num == '2' || $current_step_num == '5'): ?>
+                    <!-- Verdict Selection (Hanya untuk Langkah 02, 05, 06) -->
+                    <?php if (in_array($current_step_num, ['2', '5', '6'])): ?>
                     <div>
-                        <label>Hasil Uji Kualitas (Fisik)</label>
+                        <label><?= $current_step_num == '6' ? 'Keputusan Otorisasi Final' : 'Hasil Uji Kualitas (Fisik)' ?></label>
                         <div class="verdict-grid grid grid-cols-2 gap-3 md:gap-4">
                             <label class="cursor-pointer">
                                 <input type="radio" name="status_mutu" value="Passed" checked class="hidden peer">
@@ -394,7 +402,9 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                                     <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-emerald-700">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                                     </div>
-                                    <span class="text-xs font-black text-slate-500 peer-checked:text-emerald-800 uppercase block">PASSED / LOLOS</span>
+                                    <span class="text-xs font-black text-slate-500 peer-checked:text-emerald-800 uppercase block">
+                                        <?= $current_step_num == '6' ? 'APPROVED / DISETUJUI' : 'PASSED / LOLOS' ?>
+                                    </span>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
@@ -403,7 +413,9 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                                     <div class="flex items-center justify-center mb-1 text-slate-400 peer-checked:text-rose-700">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     </div>
-                                    <span class="text-xs font-black text-slate-500 peer-checked:text-rose-800 uppercase block">REJECT / GAGAL</span>
+                                    <span class="text-xs font-black text-slate-500 peer-checked:text-rose-800 uppercase block">
+                                        <?= $current_step_num == '6' ? 'REJECTED / DITOLAK' : 'REJECT / GAGAL' ?>
+                                    </span>
                                 </div>
                             </label>
                         </div>

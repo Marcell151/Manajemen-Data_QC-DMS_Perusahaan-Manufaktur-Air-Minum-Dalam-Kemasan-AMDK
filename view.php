@@ -171,8 +171,44 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
             </a>
         </div>
 
-        <!-- MANAGER APPROVAL PANEL DIHAPUS (Disesuaikan dengan Pivot ke Step 06) -->
-
+        <!-- MANAGER APPROVAL PANEL (Khusus untuk dokumen intermediate seperti Langkah 03) -->
+        <?php if ($doc['approval_status'] == 'Waiting Approval' && $_SESSION['role'] == 'Manager'): ?>
+        <div class="mb-8 p-6 md:p-8 bg-sky-900 rounded-3xl border border-sky-800 shadow-xl no-print relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                <div class="flex items-center gap-4 text-white">
+                    <div class="w-12 h-12 rounded-full bg-sky-800 flex items-center justify-center flex-shrink-0 border border-sky-700 shadow-inner">
+                        <svg class="w-6 h-6 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold tracking-wide">Otorisasi Lanjutan Diperlukan</h3>
+                        <p class="text-sm text-sky-200 mt-1">Dokumen ini membutuhkan keputusan Anda untuk dapat dilanjutkan oleh tim.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <form action="approve_action.php" method="POST" class="flex-1 md:flex-none">
+                        <input type="hidden" name="id" value="<?= $doc['id'] ?>">
+                        <input type="hidden" name="action" value="reject">
+                        <button type="submit" onclick="return confirm('Tolak dokumen ini?')" class="w-full px-6 py-3 bg-slate-800 hover:bg-rose-600 text-white text-sm font-black uppercase rounded-xl transition-all shadow-md shadow-rose-900/20 flex items-center justify-center gap-2 border border-slate-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            Reject
+                        </button>
+                    </form>
+                    <form action="approve_action.php" method="POST" class="flex-1 md:flex-none">
+                        <input type="hidden" name="id" value="<?= $doc['id'] ?>">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" onclick="return confirm('Setujui dokumen ini?')" class="w-full px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 text-sm font-black uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] flex items-center justify-center gap-2 border border-emerald-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            Approve
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <!-- DOCUMENT PREVIEW HERO (Prioritas Dokumen Asli) -->
         <?php if (!empty($doc['file_path']) || !empty($doc['external_link'])): ?>
         <div class="mb-8 no-print">
