@@ -34,6 +34,8 @@ if ($_SESSION['role'] == 'Pekerja_Lapangan') {
     if (!$is_fixed_step || in_array($step, ['1', '3', '4', '5'])) $can_access_input = true;
 } elseif ($_SESSION['role'] == 'Admin_Entry') {
     if (!$is_fixed_step || $step == '2') $can_access_input = true;
+} elseif ($_SESSION['role'] == 'Manager') {
+    if (!$is_fixed_step || $step == '6') $can_access_input = true;
 }
 
 if (!$can_access_input && $_SESSION['role'] !== 'Manager') {
@@ -53,7 +55,7 @@ if ($current_step_num != '1') {
     } elseif ($current_step_num == '5') {
         $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Laporan_Perbaikan' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
     } elseif ($current_step_num == '6') {
-        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE jenis = 'Uji_Ulang' AND (status = 'Passed' OR status = 'Lolos') ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+        $parent_options = $pdo->query("SELECT id, no_dokumen, produk, machine_id FROM documents WHERE (jenis = 'Uji_Lab' OR jenis = 'Uji_Ulang') AND status_mutu IN ('Passed', 'Lolos') ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 
@@ -122,12 +124,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $bulan = date("F", $timestamp);
     $folder_path = "QC_AMDK/{$produk}/{$tahun}/{$bulan}";
 
-    $approval_status = ($jenis == 'Approval_Manager' || $jenis == 'Diagnosis_Mesin') ? 'Waiting Approval' : '-';
+    if ($jenis == 'Approval_Manager') {
+        $approval_status = 'Approved';
+        $status = 'Archived';
+        // Update parent document status to Archived as well
+        if ($parent_doc_id) {
+            $stmtUpdate = $pdo->prepare("UPDATE documents SET status = 'Archived', approval_status = 'Approved' WHERE id = ?");
+            $stmtUpdate->execute([$parent_doc_id]);
+        }
+    } elseif ($jenis == 'Diagnosis_Mesin') {
+        $approval_status = 'Waiting Approval';
+    } elseif (in_array($jenis, ['Uji_Lab', 'Uji_Ulang']) && $status_mutu == 'Passed') {
+        $approval_status = 'Waiting Approval';
+    } else {
+        $approval_status = '-';
+    }
 
     $stmt = $pdo->prepare("INSERT INTO documents (no_dokumen, nama_dokumen, produk, jenis, tanggal, inspector, machine_id, admin_entry_name, status, status_mutu, deskripsi, folder_path, parent_doc_id, file_path, approval_status, external_link, ph, tds, kekeruhan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$no_dokumen, $nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $_SESSION['role'], $status, $status_mutu, $deskripsi, $folder_path, $parent_doc_id, $file_path, $approval_status, $external_link, $ph, $tds, $kekeruhan]);
 
-    header("Location: index.php");
+    header("Location: view.php?id=" . $pdo->lastInsertId());
     exit;
 }
 
@@ -140,7 +156,7 @@ $template_pdf_map = [
     '3' => 'uploads/DIAGNOSIS MASALAH (INVESTIGASI).pdf',
     '4' => 'uploads/TINDAKAN PERBAIKAN TEKNIK.pdf',
     '5' => 'uploads/VERIFIKASI UJI ULANG (RE-TEST).pdf',
-    '6' => 'uploads/OTORISASI & APPROVAL MANAGER.pdf',
+    '6' => 'uploads/OTORISASI & APPROVAL MANAGER.pdf'
 ];
 $template_label_map = [
     '1' => 'Catatan Produksi (Sampling)',
@@ -148,7 +164,7 @@ $template_label_map = [
     '3' => 'Diagnosis Masalah (Investigasi)',
     '4' => 'Tindakan Perbaikan Teknik',
     '5' => 'Verifikasi Uji Ulang (Re-Test)',
-    '6' => 'Otorisasi & Approval Manager',
+    '6' => 'Approval Final Manajer'
 ];
 $template_pdf     = $template_pdf_map[$current_step_num] ?? null;
 $template_label   = $template_label_map[$current_step_num] ?? 'Form Kosong';
@@ -163,10 +179,9 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
     <title>Input QC - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         :root { --primary: #0284c7; --bg-main: #f8fafc; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        h1 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-main); color: #1e293b; }
+        h1 { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         .form-card { background: white; border-radius: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
         label { display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem; }
         input, select, textarea {
@@ -240,7 +255,7 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
         <div class="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
             <div>
                 <!-- Mobile: Back link -->
-                <a href="index.php" class="md:hidden mb-3 flex items-center gap-1 text-slate-500 hover:text-sky-600 text-sm font-black transition-colors">
+                <a href="javascript:history.back()" class="md:hidden mb-3 flex items-center gap-1 text-slate-500 hover:text-sky-600 text-sm font-black transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     Kembali
                 </a>
@@ -251,44 +266,36 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
 
                 <!-- Mobile: Cetak Form Kosong button (below title) -->
                 <?php if ($template_exists): ?>
-                <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
+                <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank" download
                    class="md:hidden mt-3 inline-flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-xs font-black uppercase rounded-xl no-print">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    Cetak Form Kosong &rarr;
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Template
                 </a>
                 <?php endif; ?>
             </div>
 
             <!-- Desktop: Cetak Form Kosong button -->
             <?php if ($template_exists): ?>
-            <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank"
-               class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all group">
-                <svg class="w-4 h-4 text-slate-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                <span>Cetak Form Kosong</span>
-                <span class="text-slate-500 group-hover:text-slate-300 font-bold normal-case tracking-normal">
-                    &mdash; <?= htmlspecialchars($template_label) ?>
+            <a href="<?= htmlspecialchars($template_pdf) ?>" target="_blank" download
+               class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl hover:bg-slate-900 hover:text-white transition-all group shadow-sm">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <span>Download Template</span>
+                <span class="text-slate-500 group-hover:text-slate-300 font-bold normal-case tracking-normal border-l border-slate-200 pl-2 ml-1">
+                    <?= htmlspecialchars($template_label) ?>
                 </span>
             </a>
             <?php else: ?>
             <span class="no-print hidden md:flex items-center gap-2 px-5 py-3 bg-slate-50 border border-slate-200 text-slate-400 text-xs font-black uppercase rounded-xl cursor-not-allowed"
                   title="Template PDF tidak ditemukan di folder uploads/">
-                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                Cetak Form Kosong (Tidak Tersedia)
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Template Tidak Tersedia
             </span>
             <?php endif; ?>
         </div>
 
         <form action="add.php?step=<?= $step ?>" method="POST" enctype="multipart/form-data" class="form-card p-5 md:p-12 mb-32">
             
-            <!-- Top Action Header -->
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-6 mb-6 border-b border-slate-100 no-print">
-                <p class="text-sm font-black text-slate-500 uppercase tracking-wider hidden md:block">Input Data Lapangan</p>
-                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
-                    <a href="index.php" class="w-full sm:w-auto px-5 py-3 text-center text-xs font-black text-slate-500 uppercase tracking-widest hover:text-rose-600 transition-colors border border-slate-200 rounded-xl">Batal</a>
-                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-slate-950 hover:bg-sky-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-sm">Kirim Laporan</button>
-                </div>
-            </div>
-
+            
             <div class="form-grid <?= $is_mobile_mode ? 'flex flex-col gap-8' : 'grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20' ?>">
                 
                 <div class="space-y-6 md:space-y-8">
@@ -313,7 +320,7 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                         <select name="parent_doc_id" id="parentSelect" required onchange="autoFillMetadata()">
                             <option value="">-- Pilih Laporan Induk --</option>
                             <?php foreach ($parent_options as $p): 
-                                $selected = (isset($_GET['p_id']) && $_GET['p_id'] == $p['id']) ? 'selected' : '';
+                                $selected = ((isset($_GET['p_id']) && $_GET['p_id'] == $p['id']) || (isset($_GET['parent_doc_id']) && $_GET['parent_doc_id'] == $p['id'])) ? 'selected' : '';
                             ?>
                                 <option value="<?= $p['id'] ?>" data-prod="<?= $p['produk'] ?>" data-machine="<?= $p['machine_id'] ?>" <?= $selected ?>>
                                     <?= $p['no_dokumen'] ?> (<?= str_replace('_', ' ', $p['produk']) ?>)
@@ -437,7 +444,7 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
             <div class="mt-8 md:mt-12 pt-6 md:pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-xs text-slate-500 font-bold italic hidden md:block">Pastikan data & foto sudah benar sebelum menyimpan.</p>
                 <div class="flex gap-3 w-full md:w-auto">
-                    <a href="index.php" class="flex-grow md:flex-grow-0 px-6 py-4 text-center text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal</a>
+                    <a href="javascript:history.back()" class="flex-grow md:flex-grow-0 px-6 py-4 text-center text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal</a>
                     <button type="submit" class="btn-save flex-grow md:flex-grow-0 md:w-auto">Kirim Laporan</button>
                 </div>
             </div>
@@ -477,6 +484,13 @@ $template_exists  = $template_pdf && file_exists($template_pdf);
                 fileStatus.innerText = "✓ Berhasil Memuat: " + input.files[0].name;
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const parentSelect = document.getElementById('parentSelect');
+            if (parentSelect && parentSelect.value !== "") {
+                autoFillMetadata();
+            }
+        });
     </script>
 </body>
 </html>

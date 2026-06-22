@@ -29,16 +29,14 @@ $total_archived = $pdo->query("SELECT COUNT(*) FROM documents WHERE status IN ('
     <title>Riwayat Arsip - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
         :root {
             --primary: #0284c7;
             --success: #059669;
             --bg-main: #f8fafc;
         }
 
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-main); color: #1e293b; }
+        h1, h2, h3, h4 { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
 
         .stat-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; }
         .stat-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 20px -5px rgba(0,0,0,0.04); }
@@ -120,6 +118,12 @@ $total_archived = $pdo->query("SELECT COUNT(*) FROM documents WHERE status IN ('
                     <p class="text-base font-black text-slate-800 tracking-tight leading-none">Arsip Terkunci</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Global Status Tabs -->
+        <div class="mb-8 flex border-b border-slate-200">
+            <a href="index.php" class="px-6 py-4 font-bold text-sm md:text-base uppercase tracking-wider border-b-4 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors">Sedang Diproses</a>
+            <a href="archive.php" class="px-6 py-4 font-black text-sm md:text-base uppercase tracking-wider border-b-4 border-emerald-600 text-emerald-700">Selesai / Riwayat</a>
         </div>
 
         <!-- Stat Grid -->

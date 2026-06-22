@@ -19,7 +19,11 @@ if ($status_filter === 'Approved') {
     $query .= " AND (status = 'Hold' OR approval_status = 'Hold')";
 } else {
     // Default: only display active documents (not Archived or Rejected)
-    $query .= " AND status NOT IN ('Archived', 'Rejected')";
+    if ($filter == 'step6') {
+        $query .= " AND status NOT IN ('Rejected')"; // Allow Archived for step 6
+    } else {
+        $query .= " AND status NOT IN ('Archived', 'Rejected')";
+    }
 }
 
 if ($filter == 'waiting') {
@@ -36,6 +40,28 @@ if ($filter == 'waiting') {
     $query .= " AND jenis = 'Uji_Ulang'";
 } elseif ($filter == 'step6') {
     $query .= " AND jenis = 'Approval_Manager'";
+}
+
+// --- PENDING TASKS / INBOX LOGIC ---
+$pending_tasks = [];
+if ($filter && $filter !== 'waiting') {
+    $inbox_query = "";
+    if ($filter == 'step2') {
+        $inbox_query = "SELECT * FROM documents WHERE jenis = 'Catatan_Batch' AND status != 'Rejected' AND id NOT IN (SELECT parent_doc_id FROM documents WHERE parent_doc_id IS NOT NULL)";
+    } elseif ($filter == 'step3') {
+        $inbox_query = "SELECT * FROM documents WHERE jenis = 'Uji_Lab' AND status_mutu = 'Reject' AND id NOT IN (SELECT parent_doc_id FROM documents WHERE parent_doc_id IS NOT NULL)";
+    } elseif ($filter == 'step4') {
+        $inbox_query = "SELECT * FROM documents WHERE jenis = 'Diagnosis_Mesin' AND approval_status = 'Approved' AND id NOT IN (SELECT parent_doc_id FROM documents WHERE parent_doc_id IS NOT NULL)";
+    } elseif ($filter == 'step5') {
+        $inbox_query = "SELECT * FROM documents WHERE jenis = 'Laporan_Perbaikan' AND status != 'Rejected' AND id NOT IN (SELECT parent_doc_id FROM documents WHERE parent_doc_id IS NOT NULL)";
+    } elseif ($filter == 'step6') {
+        $inbox_query = "SELECT * FROM documents WHERE ((jenis = 'Uji_Lab' AND (status_mutu = 'Passed' OR status_mutu = 'Lolos')) OR (jenis = 'Uji_Ulang' AND (status_mutu = 'Passed' OR status_mutu = 'Lolos'))) AND id NOT IN (SELECT parent_doc_id FROM documents WHERE parent_doc_id IS NOT NULL AND jenis = 'Approval_Manager')";
+    }
+    
+    if (!empty($inbox_query)) {
+        $stmt_inbox = $pdo->query($inbox_query);
+        $pending_tasks = $stmt_inbox->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 
 if ($search) {
@@ -138,16 +164,14 @@ $theme_classes = [
     <title>Dashboard Mutu - Mineral Pure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
         :root {
             --primary: #0284c7;
             --success: #059669;
             --bg-main: #f8fafc;
         }
 
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-main); color: #1e293b; }
+        h1, h2, h3, h4 { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
 
         .stat-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; }
         .stat-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 20px -5px rgba(0,0,0,0.04); }
@@ -236,6 +260,12 @@ $theme_classes = [
             </div>
         </div>
 
+        <!-- Global Status Tabs -->
+        <div class="mb-8 flex border-b border-slate-200">
+            <a href="index.php" class="px-6 py-4 font-black text-sm md:text-base uppercase tracking-wider border-b-4 border-sky-600 text-sky-700">Sedang Diproses</a>
+            <a href="archive.php" class="px-6 py-4 font-bold text-sm md:text-base uppercase tracking-wider border-b-4 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors">Selesai / Riwayat</a>
+        </div>
+
         <!-- Stat Grid -->
         <?php if (!$filter): ?>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -259,74 +289,6 @@ $theme_classes = [
                 <h3 class="text-3xl font-extrabold text-amber-700"><?= $waiting_approval ?></h3>
                 <p class="text-xs text-amber-800 mt-1 font-bold uppercase">Menunggu Otorisasi</p>
             </div>
-        </div>
-        <?php else: 
-            // Step-specific dynamic stats
-            $step_info = $steps_config[$filter] ?? null;
-            $step_files = $pipeline_data[$filter] ?? [];
-            if ($filter === 'waiting') {
-                $total_step = $waiting_approval;
-            } else {
-                $total_step = count($step_files);
-            }
-            
-            // Calculate step-specific totals
-            $step_approved = 0;
-            $step_pending = 0;
-            $step_rejected = 0;
-            $step_passed = 0;
-            
-            // If waiting filter is active, populate files from the filtered view
-            $files_to_scan = ($filter === 'waiting') ? $files : $step_files;
-            
-            foreach ($files_to_scan as $f) {
-                if ($f['jenis'] == 'Uji_Lab' || $f['jenis'] == 'Uji_Ulang') {
-                    if ($f['status_mutu'] == 'Passed' || $f['status_mutu'] == 'Lolos') {
-                        $step_passed++;
-                    } else {
-                        $step_rejected++;
-                    }
-                }
-                if ($f['jenis'] == 'Diagnosis_Mesin' || $f['jenis'] == 'Approval_Manager') {
-                    if ($f['approval_status'] == 'Approved') {
-                        $step_approved++;
-                    } elseif ($f['approval_status'] == 'Rejected') {
-                        $step_rejected++;
-                    } else {
-                        $step_pending++;
-                    }
-                }
-            }
-        ?>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="stat-card border-l-4 border-l-sky-500 flex flex-col justify-center">
-                <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Total Laporan Tahap Ini</p>
-                <h3 class="text-3xl font-extrabold text-slate-900"><?= $total_step ?></h3>
-                <p class="text-xs text-slate-650 mt-1 font-bold uppercase">Aktif &amp; Terfilter</p>
-            </div>
-            <?php if ($filter == 'step2' || $filter == 'step5'): ?>
-                <div class="stat-card border-l-4 border-l-emerald-500 bg-emerald-50/10 flex flex-col justify-center">
-                    <p class="text-xs font-black text-emerald-800 uppercase tracking-wider mb-1">Mutu Passed</p>
-                    <h3 class="text-3xl font-extrabold text-emerald-700"><?= $step_passed ?></h3>
-                    <p class="text-xs text-emerald-750 mt-1 font-bold uppercase">Memenuhi Standard</p>
-                </div>
-                <div class="stat-card border-l-4 border-l-rose-500 bg-rose-50/10 flex flex-col justify-center">
-                    <p class="text-xs font-black text-rose-800 uppercase tracking-wider mb-1">Mutu Reject</p>
-                    <h3 class="text-3xl font-extrabold text-rose-700"><?= $step_rejected ?></h3>
-                    <p class="text-xs text-rose-750 mt-1 font-bold uppercase">Butuh Tindak Lanjut</p>
-                </div>
-            <?php elseif ($filter == 'step3' || $filter == 'step6' || $filter == 'waiting'): ?>
-                <div class="stat-card border-l-4 border-l-emerald-500 bg-emerald-50/10 flex flex-col justify-center">
-                    <p class="text-xs font-black text-emerald-800 uppercase tracking-wider mb-1">Approved</p>
-                    <h3 class="text-3xl font-extrabold text-emerald-700"><?= $step_approved ?></h3>
-                    <p class="text-xs text-emerald-750 mt-1 font-bold uppercase">Telah Diotorisasi</p>
-                </div>
-                <div class="stat-card border-l-4 border-l-amber-500 bg-amber-50/10 flex flex-col justify-center">
-                    <p class="text-xs font-black text-amber-800 uppercase tracking-wider mb-1">Pending Approval</p>
-                    <h3 class="text-3xl font-extrabold text-amber-700"><?= $step_pending ?></h3>
-                    <p class="text-xs text-amber-800 mt-1 font-bold uppercase">Menunggu Otorisasi</p>
-                </div>
-            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -364,10 +326,12 @@ $theme_classes = [
         </form>
 
         <!-- Sub Filter Bar -->
+        <?php if (!$filter || $filter == 'waiting'): ?>
         <div class="mb-6 flex flex-wrap gap-2">
             <a href="index.php?status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= !$filter ? 'active' : '' ?>">Semua Tahap</a>
             <a href="index.php?filter=waiting&status_filter=<?= htmlspecialchars($status_filter ?? '') ?>&start_date=<?= htmlspecialchars($start_date ?? '') ?>&end_date=<?= htmlspecialchars($end_date ?? '') ?>&search=<?= htmlspecialchars($search ?? '') ?>" class="btn-filter <?= $filter == 'waiting' ? 'active' : '' ?>">Butuh Approval</a>
         </div>
+        <?php endif; ?>
 
         <!-- ============================================================ -->
         <!-- PIPELINE / STAGE BOXES VIEW (100% Responsive Grid) -->
@@ -392,11 +356,74 @@ $theme_classes = [
                         <p class="text-xs text-slate-500 font-semibold mt-0.5">Menampilkan dokumen pada tahap ini saja</p>
                     </div>
                 </div>
-                <a href="index.php" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl border border-slate-200 transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    Tampilkan Semua Tahapan
-                </a>
+                <div class="flex items-center gap-2">
+                    <?php 
+                    $can_add = false;
+                    if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($filter, ['step1', 'step3', 'step4', 'step5'])) $can_add = true;
+                    if ($_SESSION['role'] == 'Admin_Entry' && $filter == 'step2') $can_add = true;
+                    if ($_SESSION['role'] == 'Manager' && $filter == 'step6') $can_add = true;
+                    
+                    if ($can_add): 
+                        $step_num = str_replace('step', '', $filter);
+                    ?>
+                        <a href="add.php?step=<?= $step_num ?>" class="px-5 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black uppercase rounded-xl transition-colors flex items-center gap-2 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Laporan Tanpa Induk
+                        </a>
+                    <?php endif; ?>
+                    <a href="index.php" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase rounded-xl border border-slate-200 transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Semua Tahapan
+                    </a>
+                </div>
             </div>
+
+            <!-- PENDING TASKS / INBOX SECTION -->
+            <?php if (!empty($pending_tasks)): ?>
+            <div class="mb-10">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">Inbox / Perlu Dikerjakan (<?= count($pending_tasks) ?>)</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <?php foreach ($pending_tasks as $ptask): 
+                        $can_process = false;
+                        if ($_SESSION['role'] == 'Pekerja_Lapangan' && in_array($filter, ['step1', 'step3', 'step4', 'step5'])) $can_process = true;
+                        if ($_SESSION['role'] == 'Admin_Entry' && $filter == 'step2') $can_process = true;
+                        if ($_SESSION['role'] == 'Manager' && $filter == 'step6') $can_process = true;
+                        
+                        $step_num = str_replace('step', '', $filter);
+                    ?>
+                        <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="text-[10px] font-black px-2.5 py-1 bg-white border border-amber-200 text-amber-700 rounded-lg uppercase tracking-wider"><?= htmlspecialchars(str_replace('_', ' ', $ptask['jenis'])) ?></span>
+                                    <span class="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border border-slate-100"><?= date('d M', strtotime($ptask['tanggal'])) ?></span>
+                                </div>
+                                <h4 class="font-bold text-slate-800 text-sm mb-1.5"><?= htmlspecialchars($ptask['no_dokumen']) ?></h4>
+                                <p class="text-xs text-slate-600 font-semibold mb-1">Batch: <span class="text-sky-700"><?= htmlspecialchars($ptask['produk']) ?></span></p>
+                                <p class="text-[10px] text-slate-500 uppercase">Mesin: <?= htmlspecialchars($ptask['machine_id'] ?? '-') ?></p>
+                            </div>
+                            <?php if ($can_process): ?>
+                                <a href="add.php?step=<?= $step_num ?>&parent_doc_id=<?= $ptask['id'] ?>" class="mt-5 w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase text-center rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-amber-500/20">
+                                    Proses Langkah <?= $step_num ?>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                </a>
+                            <?php else: ?>
+                                <div class="mt-5 w-full py-2.5 bg-white text-slate-400 text-xs font-black uppercase text-center rounded-xl border border-slate-200">
+                                    Menunggu Tim Terkait
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 mb-4 mt-8">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">Riwayat Selesai</h3>
+            </div>
+            <?php endif; ?>
 
             <!-- List of documents for this specific step -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">

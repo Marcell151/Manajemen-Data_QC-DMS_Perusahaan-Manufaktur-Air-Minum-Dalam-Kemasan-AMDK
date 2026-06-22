@@ -35,6 +35,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $tds = $_POST['tds'] ?? null;
     $kekeruhan = $_POST['kekeruhan'] ?? null;
 
+    if ($jenis == 'Approval_Manager') {
+        $approval_status = 'Approved';
+        $status = 'Archived';
+    } elseif ($jenis == 'Diagnosis_Mesin') {
+        $approval_status = 'Waiting Approval';
+    } elseif (in_array($jenis, ['Uji_Lab', 'Uji_Ulang']) && $status_mutu == 'Passed') {
+        $approval_status = 'Waiting Approval';
+    } else {
+        $approval_status = '-';
+    }
+
     // Logika Folder Path
     $timestamp = strtotime($tanggal);
     $tahun = date("Y", $timestamp);
@@ -48,11 +59,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sql = "UPDATE documents SET 
             nama_dokumen = ?, produk = ?, jenis = ?, tanggal = ?, 
             inspector = ?, machine_id = ?, status = ?, status_mutu = ?, external_link = ?, deskripsi = ?, 
-            folder_path = ?, ph = ?, tds = ?, kekeruhan = ?
+            folder_path = ?, ph = ?, tds = ?, kekeruhan = ?, approval_status = ?
             WHERE id = ?";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $status, $status_mutu, $external_link, $deskripsi, $new_folder_path, $ph, $tds, $kekeruhan, $id]);
+    $stmt->execute([$nama, $produk, $jenis, $tanggal, $inspector, $machine_id, $status, $status_mutu, $external_link, $deskripsi, $new_folder_path, $ph, $tds, $kekeruhan, $approval_status, $id]);
 
     header("Location: view.php?id=" . $id);
     exit;
@@ -71,8 +82,7 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
     <title>Edit Dokumen QC - <?= htmlspecialchars($doc['nama_dokumen']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }
         .sidebar-container { height: 100vh; position: sticky; top: 0; }
         .form-card { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
         .btn-save { background: #0f172a; color: white; padding: 16px 32px; border-radius: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s ease; cursor: pointer; border: none; }
@@ -99,15 +109,6 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
         </div>
 
         <form action="" method="POST" class="form-card mb-32">
-            
-            <!-- Top Action Header -->
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4 pb-6 mb-6 border-b border-slate-100 no-print">
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:block">Koreksi Data Laporan</p>
-                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
-                    <a href="view.php?id=<?= $id ?>" class="w-full sm:w-auto px-5 py-3 text-center text-xs font-black text-slate-550 uppercase tracking-widest hover:text-rose-600 transition-colors border border-slate-200 rounded-xl">Batal</a>
-                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase rounded-xl transition-all shadow-sm">Simpan Perubahan</button>
-                </div>
-            </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
                 <div class="space-y-10">
@@ -222,7 +223,7 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
             </div>
 
             <div class="mt-16 pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-end items-center gap-6 w-full">
-                <a href="view.php?id=<?= $id ?>" class="w-full sm:w-auto text-center px-6 py-4 text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal &amp; Kembali</a>
+                <a href="javascript:history.back()" class="w-full sm:w-auto text-center px-6 py-4 text-sm font-black text-slate-500 hover:text-rose-600 transition-colors border border-slate-200 rounded-2xl bg-white">Batal &amp; Kembali</a>
                 <button type="submit" class="btn-save w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shadow-amber-500/20">Simpan Perubahan</button>
             </div>
         </form>

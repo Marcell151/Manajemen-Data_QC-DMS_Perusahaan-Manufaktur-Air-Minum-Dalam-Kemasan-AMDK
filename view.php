@@ -74,13 +74,11 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
     <title>QC-DMS: <?= htmlspecialchars($doc['no_dokumen']) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         
         @media print {
             @page { 
-                margin: 1.5cm 1.5cm 2.5cm 1.5cm; 
+                margin: 0.5cm 1cm; 
             }
             .no-print, .no-print *, nav, aside, header, .action-area, .sidebar-container, .mobile-topbar, .mobile-bottom-nav, .mobile-action-bar { 
                 display: none !important; 
@@ -90,10 +88,15 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                 margin: 0 !important; 
                 padding: 0 !important; 
             }
-            body { 
+            body, html, main, .main-layout, .view-container, .mb-16, #metadataSection {
                 background: white !important; 
                 padding: 0 !important; 
                 margin: 0 !important; 
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important;
+                max-width: none !important;
+                width: 100% !important;
             }
             #reportContent { 
                 display: block !important; 
@@ -103,10 +106,6 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                 width: 100% !important; 
                 padding: 0 !important; 
                 transform: none !important; 
-            }
-            main { 
-                padding: 0 !important; 
-                margin: 0 !important; 
             }
             
             /* Print Footer styling */
@@ -166,46 +165,13 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
     <div class="max-w-5xl mx-auto py-4 md:py-8 px-4 md:px-8 view-container">
         <!-- Mobile top back button -->
         <div class="mb-4 flex items-center gap-3 no-print">
-            <a href="index.php" class="flex items-center gap-2 font-bold text-slate-500 hover:text-sky-600 transition-all text-sm md:text-xs md:uppercase md:tracking-widest">
+            <a href="javascript:history.back()" class="flex items-center gap-2 font-bold text-slate-500 hover:text-sky-600 transition-all text-sm md:text-xs md:uppercase md:tracking-widest">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                <span>Kembali ke Dashboard</span>
+                <span>Kembali</span>
             </a>
         </div>
 
-        <!-- MANAGER APPROVAL PANEL (Pindah Ke Atas - Digital Only) -->
-        <?php if ($_SESSION['role'] == 'Manager' && ($doc['jenis'] == 'Approval_Manager' || $doc['jenis'] == 'Diagnosis_Mesin') && $doc['approval_status'] == 'Waiting Approval'): ?>
-            <div class="mb-8 bg-white rounded-3xl border-2 border-slate-900 overflow-hidden shadow-xl no-print transition-all">
-                <div class="bg-slate-900 p-5 text-white flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-black uppercase tracking-tight">Otorisasi Manajer Produksi</h3>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Tinjau Bukti Di Bawah Sebelum Memberikan Keputusan</p>
-                    </div>
-                </div>
-                <form method="POST" action="approve_action.php" class="p-5 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
-                    <input type="hidden" name="doc_id" value="<?= $id ?>">
-                    
-                    <div>
-                        <label for="notes" class="block text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Keterangan / Catatan Approval (Wajib Diisi):</label>
-                        <textarea name="notes" id="notes" required placeholder="Tuliskan catatan/keterangan keputusan penyelesaian masalah di sini sebagai bukti audit..." class="w-full p-4 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 bg-white" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="flex justify-end gap-3">
-                        <?php if ($doc['jenis'] == 'Diagnosis_Mesin'): ?>
-                            <button type="submit" name="decision" value="Rejected" class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">Reject Laporan</button>
-                            <button type="submit" name="decision" value="Approved" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">Approve Laporan</button>
-                        <?php else: ?>
-                            <button type="submit" name="decision" value="Hold" class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">Hold / Tolak</button>
-                            <button type="submit" name="decision" value="Approved" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-md transition-all">Approve Final</button>
-                        <?php endif; ?>
-                    </div>
-                </form>
-            </div>
-        <?php endif; ?>
+        <!-- MANAGER APPROVAL PANEL DIHAPUS (Disesuaikan dengan Pivot ke Step 06) -->
 
         <!-- DOCUMENT PREVIEW HERO (Prioritas Dokumen Asli) -->
         <?php if (!empty($doc['file_path']) || !empty($doc['external_link'])): ?>
@@ -274,7 +240,7 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
         <!-- MOBILE STICKY ACTION BAR (visible only on mobile) -->
         <div class="mobile-action-bar no-print">
-            <a href="index.php" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 border border-slate-300 rounded-xl text-slate-700 font-black text-xs uppercase bg-white">
+            <a href="javascript:history.back()" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 border border-slate-300 rounded-xl text-slate-700 font-black text-xs uppercase bg-white">
                 <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 Kembali
             </a>
@@ -298,20 +264,22 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
         </div>
 
         <!-- COLLAPSIBLE METADATA (Digital Summary) -->
-        <div class="no-print mb-16">
-            <button onclick="toggleMetadata()" class="w-full py-4 px-5 bg-white hover:bg-slate-50 rounded-xl flex justify-between items-center transition-all border border-slate-200 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    <h4 class="text-xs font-black text-slate-650 uppercase tracking-widest">Metadata Sistem & Audit Trail</h4>
-                </div>
-                <span id="metaArrow" class="transform transition-transform duration-300 text-slate-500">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                </span>
-            </button>
+        <div class="mb-16">
+            <div class="no-print">
+                <button onclick="toggleMetadata()" class="w-full py-4 px-5 bg-white hover:bg-slate-50 rounded-xl flex justify-between items-center transition-all border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <h4 class="text-xs font-black text-slate-650 uppercase tracking-widest">Metadata Sistem & Audit Trail</h4>
+                    </div>
+                    <span id="metaArrow" class="transform transition-transform duration-300 text-slate-500" style="transform: rotate(180deg);">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </span>
+                </button>
+            </div>
 
-            <div id="metadataSection" class="metadata-content mt-4">
+            <div id="metadataSection" class="metadata-content open mt-4">
                 
                 <!-- METADATA UNTUK TAMPILAN LAYAR (UI MODERN) -->
                 <div class="no-print grid grid-cols-1 md:grid-cols-2 gap-6 p-1 mb-8 meta-grid">
@@ -428,10 +396,10 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                                     </span>
                                 </li>
                             <?php endif; ?>
-                            <?php if ($doc['jenis'] == 'Approval_Manager' && !empty($doc['approved_at'])): ?>
+                            <?php if (($doc['jenis'] == 'Uji_Ulang' || $doc['jenis'] == 'Approval_Manager') && !empty($doc['approved_at'])): ?>
                                 <li class="flex flex-col gap-1.5 pt-2 border-t border-slate-50">
                                     <span class="text-xs font-black text-slate-500 uppercase tracking-wider">Total Durasi Downtime Mesin</span>
-                                    <span class="text-xs font-black text-emerald-800 bg-emerald-55 px-3 py-2 rounded-xl border border-emerald-100">
+                                    <span class="text-base font-black text-rose-700 bg-rose-50 px-3 py-2 rounded-xl border border-rose-200">
                                         <?= getRepairDowntime($doc, $pdo) ?>
                                     </span>
                                 </li>
@@ -476,8 +444,8 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                 </div>
 
                 <!-- METADATA UNTUK CETAK FISIK (Disembunyikan di layar, muncul saat print) -->
-                <div id="reportContent" class="hidden print:block bg-white p-[0.5in] mx-auto border border-slate-200 shadow-sm" style="width: 210mm; min-height: 260mm; color: black; font-family: 'Times New Roman', serif; overflow: hidden;">
-                    <div class="text-[8px] font-black text-blue-600 mb-4 no-print border border-blue-100 p-2 bg-blue-50/50 rounded-lg italic text-center">
+                <div id="reportContent" class="hidden print:block bg-white p-2 print:p-0 mx-auto border-none" style="color: black; font-family: 'Times New Roman', serif; overflow: hidden;">
+                    <div class="text-xs font-black text-blue-600 mb-4 no-print border border-blue-100 p-2 bg-blue-50/50 rounded-lg italic text-center">
                         ℹ️ RINGKASAN DATA DIGITAL UNTUK AUDIT & BASIS DATA
                     </div>
                     <table class="w-full border-b-2 border-black print-kop-line pb-2 mb-4">
@@ -486,26 +454,33 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                                 <div class="w-12 h-12 bg-blue-600 text-white flex items-center justify-center text-2xl font-black rounded-xl">MP</div>
                             </td>
                             <td class="pb-2 pl-2">
-                                <h1 class="text-xl font-bold uppercase leading-none text-slate-900">PT. MINERAL PURE INDONESIA</h1>
-                                <p class="text-[9px] font-bold uppercase mt-1 text-slate-500">Kawasan Industri Jababeka, Blok C-14, Bekasi - Indonesia</p>
-                                <p class="text-[8px] mt-0.5 italic text-sky-600">Quality Control & Assurance Management System</p>
+                                <h1 class="text-2xl font-bold uppercase leading-tight text-slate-900">PT. MINERAL PURE INDONESIA</h1>
+                                <p class="text-xs font-bold uppercase mt-1 text-slate-500">Kawasan Industri Jababeka, Blok C-14, Bekasi - Indonesia</p>
+                                <p class="text-xs mt-0.5 italic text-sky-600">Quality Control & Assurance Management System</p>
                             </td>
                             <td class="text-right pb-2">
-                                <h2 class="text-[10px] font-bold uppercase tracking-widest border-b border-black inline-block mb-1">FORMULIR PERSETUJUAN MUTU</h2>
-                                <p class="text-[9px] font-bold mt-1">No: <?= htmlspecialchars($doc['no_dokumen'] ?? "NEW-DOC") ?></p>
+                                <h2 class="text-sm font-bold uppercase tracking-widest border-b border-black inline-block mb-1">FORMULIR PERSETUJUAN MUTU</h2>
+                                <p class="text-sm font-bold mt-1">No: <?= htmlspecialchars($doc['no_dokumen'] ?? "NEW-DOC") ?></p>
                             </td>
                         </tr>
                     </table>
 
                     <!-- DOCUMENT TITLE -->
-                    <div class="text-center mb-4">
-                        <h3 class="text-lg font-bold uppercase underline decoration-2 underline-offset-4">
-                            <?= htmlspecialchars(str_replace('_', ' ', $doc['jenis'])) ?>
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold uppercase underline decoration-2 underline-offset-4">
+                            <?php if ($doc['jenis'] == 'Approval_Manager'): ?>
+                                CERTIFICATE OF FINAL APPROVAL
+                            <?php else: ?>
+                                <?= htmlspecialchars(str_replace('_', ' ', $doc['jenis'])) ?>
+                            <?php endif; ?>
                         </h3>
+                        <?php if ($doc['jenis'] == 'Approval_Manager'): ?>
+                            <p class="text-xs font-bold mt-2 uppercase text-slate-600">Dokumen Otorisasi Rilis Produk (Overall Final Approval)</p>
+                        <?php endif; ?>
                     </div>
 
                     <!-- PRIMARY DATA TABLE -->
-                    <table class="w-full text-[10px] mb-4 border-collapse">
+                    <table class="w-full text-sm mb-6 border-collapse">
                         <tr>
                             <td class="border border-black p-1.5 font-bold w-1/4 bg-gray-50 uppercase">TANGGAL</td>
                             <td class="border border-black p-1.5 w-1/4"><?= htmlspecialchars($doc['tanggal']) ?></td>
@@ -521,8 +496,8 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                     </table>
 
                     <!-- VERDICT / STATUS BOX -->
-                    <div class="border border-black p-2 mb-4 text-center">
-                        <p class="text-[8px] font-bold uppercase mb-1">KESIMPULAN PEMERIKSAAN / VERDICT</p>
+                    <div class="border border-black p-4 mb-6 text-center">
+                        <p class="text-xs font-bold uppercase mb-3">KESIMPULAN PEMERIKSAAN / VERDICT</p>
                         <div class="flex justify-center gap-10">
                             <?php if ($doc['jenis'] == 'Uji_Lab' || $doc['jenis'] == 'Uji_Ulang'): ?>
                                 <?php 
@@ -577,7 +552,7 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
                     <!-- TECHNICAL PARAMETERS -->
                     <?php if ($doc['jenis'] === 'Uji_Lab' || $doc['jenis'] === 'Uji_Ulang'): ?>
-                    <table class="w-full text-[10px] mb-4 border-collapse text-center">
+                    <table class="w-full text-sm mb-6 border-collapse text-center">
                         <thead>
                             <tr class="bg-gray-100 font-bold">
                                 <td class="border border-black p-1.5">PARAMETER</td>
@@ -588,51 +563,55 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="border border-black p-1.5 font-bold text-left">Potential of Hydrogen (pH)</td>
-                                <td class="border border-black p-1.5 italic text-gray-500">6.5 - 8.5</td>
-                                <td class="border border-black p-1.5 font-bold text-sm"><?= $doc['ph'] ?? '-' ?></td>
-                                <td class="border border-black p-1.5"></td>
+                                <td class="border border-black p-2 font-bold text-left">Potential of Hydrogen (pH)</td>
+                                <td class="border border-black p-2 italic text-gray-500">6.5 - 8.5</td>
+                                <td class="border border-black p-2 font-bold text-base"><?= $doc['ph'] ?? '-' ?></td>
+                                <td class="border border-black p-2"></td>
                             </tr>
                             <tr>
-                                <td class="border border-black p-1.5 font-bold text-left">Total Dissolved Solids (TDS)</td>
-                                <td class="border border-black p-1.5 italic text-gray-500">&lt; 500 PPM</td>
-                                <td class="border border-black p-1.5 font-bold text-sm"><?= $doc['tds'] ?? '-' ?></td>
-                                <td class="border border-black p-1.5"></td>
+                                <td class="border border-black p-2 font-bold text-left">Total Dissolved Solids (TDS)</td>
+                                <td class="border border-black p-2 italic text-gray-500">&lt; 500 PPM</td>
+                                <td class="border border-black p-2 font-bold text-base"><?= $doc['tds'] ?? '-' ?></td>
+                                <td class="border border-black p-2"></td>
                             </tr>
                             <tr>
-                                <td class="border border-black p-1.5 font-bold text-left">Kekeruhan (Turbidity)</td>
-                                <td class="border border-black p-1.5 italic text-gray-500">&lt; 1.5 NTU</td>
-                                <td class="border border-black p-1.5 font-bold text-sm"><?= $doc['kekeruhan'] ?? '-' ?></td>
-                                <td class="border border-black p-1.5"></td>
+                                <td class="border border-black p-2 font-bold text-left">Kekeruhan (Turbidity)</td>
+                                <td class="border border-black p-2 italic text-gray-500">&lt; 1.5 NTU</td>
+                                <td class="border border-black p-2 font-bold text-base"><?= $doc['kekeruhan'] ?? '-' ?></td>
+                                <td class="border border-black p-2"></td>
                             </tr>
                         </tbody>
                     </table>
                     <?php endif; ?>
 
                     <!-- DESCRIPTION AREA -->
-                    <div class="border border-black p-3 mb-6 min-h-[120px]">
-                        <p class="text-[8px] font-bold uppercase mb-2 border-b border-black inline-block">TEMUAN & ANALISIS (FINDINGS & ANALYSIS):</p>
-                        <div class="text-[10px] italic leading-tight">
+                    <div class="border border-black p-4 mb-8 min-h-[150px]">
+                        <?php if ($doc['jenis'] == 'Approval_Manager'): ?>
+                            <p class="text-xs font-bold uppercase mb-3 border-b border-black inline-block">CATATAN KEPUTUSAN FINAL (FINAL DECISION NOTES):</p>
+                        <?php else: ?>
+                            <p class="text-xs font-bold uppercase mb-3 border-b border-black inline-block">TEMUAN & ANALISIS (FINDINGS & ANALYSIS):</p>
+                        <?php endif; ?>
+                        <div class="text-sm italic leading-relaxed">
                             <?= $doc['deskripsi'] ?: '<p class="mt-2 text-gray-200">__________________________________________________________________________________________</p>' ?>
                         </div>
                     </div>
 
                     <!-- SIGNATURE AREA -->
-                    <table class="w-full text-[9px] text-center border-collapse mt-auto">
+                    <table class="w-full text-xs text-center border-collapse mt-auto">
                         <tr>
-                            <td class="w-1/3 pb-16 font-bold">DIBUAT OLEH (INSPECTOR)</td>
-                            <td class="w-1/3 pb-16 font-bold">DIVERIFIKASI (ADMIN)</td>
-                            <td class="w-1/3 pb-16 font-bold italic">OTORISASI (MANAGER)</td>
+                            <td class="w-1/3 pb-20 font-bold">DIBUAT OLEH (INSPECTOR)</td>
+                            <td class="w-1/3 pb-20 font-bold">DIVERIFIKASI (ADMIN)</td>
+                            <td class="w-1/3 pb-20 font-bold italic">OTORISASI (MANAGER)</td>
                         </tr>
                         <tr>
-                            <td class="border-t border-black pt-1 font-bold uppercase">( <?= htmlspecialchars($doc['inspector'] ?? '________________') ?> )</td>
-                            <td class="border-t border-black pt-1 font-bold uppercase">( <?= htmlspecialchars($doc['admin_entry_name'] ?? '________________') ?> )</td>
-                            <td class="border-t border-black pt-1 font-bold relative uppercase">
+                            <td class="border-t border-black pt-2 font-bold uppercase">( <?= htmlspecialchars($doc['inspector'] ?? '________________') ?> )</td>
+                            <td class="border-t border-black pt-2 font-bold uppercase">( <?= htmlspecialchars($doc['admin_entry_name'] ?? '________________') ?> )</td>
+                            <td class="border-t border-black pt-2 font-bold relative uppercase">
                                 ( <?= htmlspecialchars(explode('(', $doc['approved_by'] ?? '________________')[0]) ?> )
                                 <?php if ($doc['approval_status'] == 'Approved'): ?>
-                                    <div class="absolute -top-12 left-1/2 -translate-x-1/2 border-2 border-emerald-600 text-emerald-600 p-1 rotate-[-10deg] font-black text-[8px] uppercase tracking-wider bg-white/90">VERIFIED APPROVED</div>
+                                    <div class="absolute -top-14 left-1/2 -translate-x-1/2 border-2 border-emerald-600 text-emerald-600 p-1.5 rotate-[-10deg] font-black text-xs uppercase tracking-wider bg-white/90">VERIFIED APPROVED</div>
                                 <?php elseif ($doc['approval_status'] == 'Rejected' || $doc['status'] == 'Rejected'): ?>
-                                    <div class="absolute -top-12 left-1/2 -translate-x-1/2 border-2 border-rose-600 text-rose-600 p-1 rotate-[-10deg] font-black text-[8px] uppercase tracking-wider bg-white/90">VERIFIED REJECTED</div>
+                                    <div class="absolute -top-14 left-1/2 -translate-x-1/2 border-2 border-rose-600 text-rose-600 p-1.5 rotate-[-10deg] font-black text-xs uppercase tracking-wider bg-white/90">VERIFIED REJECTED</div>
                                 <?php elseif ($doc['approval_status'] == 'Hold' || $doc['status'] == 'Hold'): ?>
                                     <div class="absolute -top-12 left-1/2 -translate-x-1/2 border-2 border-amber-500 text-amber-500 p-1 rotate-[-10deg] font-black text-[8px] uppercase tracking-wider bg-white/90">STATUS HOLD</div>
                                 <?php endif; ?>
@@ -663,40 +642,60 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
 
         <div class="mt-8 mb-20 no-print text-center border-t border-slate-200 pt-8">
             <p class="text-[10px] font-bold text-slate-400 uppercase mb-4 tracking-widest">Akhir dari Detail Laporan</p>
-            <a href="index.php" class="inline-flex items-center gap-2 px-8 py-3 bg-slate-200 hover:bg-slate-355 text-slate-700 font-black text-xs uppercase rounded-xl transition-all border border-slate-300">
+            <a href="javascript:history.back()" class="inline-flex items-center gap-2 px-8 py-3 bg-slate-200 hover:bg-slate-355 text-slate-700 font-black text-xs uppercase rounded-xl transition-all border border-slate-300">
                 <svg class="w-4 h-4 text-slate-650" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                Selesai &amp; Kembali ke Dashboard
+                Kembali
             </a>
         </div>
 
         <!-- Smart Trigger: Next Step Guidance (Digital Only) -->
-        <?php if ($_SESSION['role'] == 'Admin_Entry' && empty($child_docs)): ?>
+        <?php if (empty($child_docs)): ?>
             <?php 
             $next_step_label = ""; $next_step_url = ""; $next_step_icon = ""; $next_step_color = "bg-blue-600";
+            $next_step_role = ""; $next_step_role_name = ""; $is_waiting_approval = false;
             
             if ($doc['jenis'] == 'Catatan_Batch') {
                 $next_step_label = "Lakukan Uji Laboratorium";
                 $next_step_url = "add.php?step=2&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
+                $next_step_role = "Admin_Entry";
+                $next_step_role_name = "Admin QC / Laboratorium";
                 $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>';
             } elseif ($doc['jenis'] == 'Uji_Lab' || $doc['jenis'] == 'Uji_Ulang') {
                 if ($doc['status'] == 'Reject') {
                     $next_step_label = "Lakukan Diagnosis Masalah";
                     $next_step_url = "add.php?step=3&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
+                    $next_step_role = "Pekerja_Lapangan";
+                    $next_step_role_name = "Pekerja Lapangan / Teknisi";
                     $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>';
                     $next_step_color = "bg-rose-600";
-                } else {
-                    $next_step_label = "Minta Approval Manager";
+                } elseif ($doc['approval_status'] == 'Waiting Approval') {
+                    $next_step_label = "Buat Laporan Approval Final (Langkah 06)";
                     $next_step_url = "add.php?step=6&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
+                    $next_step_role = "Manager";
+                    $next_step_role_name = "Manajer Produksi";
                     $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>';
-                    $next_step_color = "bg-emerald-600";
+                    $next_step_color = "bg-amber-500";
                 }
             } elseif ($doc['jenis'] == 'Diagnosis_Mesin') {
-                $next_step_label = "Buat Laporan Perbaikan";
-                $next_step_url = "add.php?step=4&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
-                $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                if ($doc['approval_status'] == 'Approved') {
+                    $next_step_label = "Buat Laporan Perbaikan";
+                    $next_step_url = "add.php?step=4&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
+                    $next_step_role = "Pekerja_Lapangan";
+                    $next_step_role_name = "Pekerja Lapangan / Teknisi";
+                    $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                } else {
+                    $is_waiting_approval = true;
+                    $next_step_label = "Menunggu Approval Manajer";
+                    $next_step_role = "Manager";
+                    $next_step_role_name = "Manajer Produksi";
+                    $next_step_color = "bg-amber-500";
+                    $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                }
             } elseif ($doc['jenis'] == 'Laporan_Perbaikan') {
                 $next_step_label = "Lakukan Uji Verifikasi (Re-test)";
                 $next_step_url = "add.php?step=5&m_id=".urlencode($doc['machine_id'])."&prod=".urlencode($doc['produk'])."&p_id=".$id;
+                $next_step_role = "Pekerja_Lapangan";
+                $next_step_role_name = "Pekerja Lapangan / Teknisi";
                 $next_step_icon = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>';
             }
             ?>
@@ -712,7 +711,13 @@ if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
                             <p class="text-lg font-black leading-tight mt-0.5"><?= $next_step_label ?></p>
                         </div>
                     </div>
-                    <a href="<?= $next_step_url ?>" class="w-full md:w-auto px-6 py-3 text-center bg-white <?= str_replace('bg-', 'text-', $next_step_color) ?> text-xs font-black uppercase rounded-xl shadow hover:opacity-90 transition-all">Lanjutkan Alur</a>
+                    <?php if ($_SESSION['role'] == $next_step_role && !$is_waiting_approval): ?>
+                        <a href="<?= $next_step_url ?>" class="w-full md:w-auto px-6 py-3 text-center bg-white <?= str_replace('bg-', 'text-', $next_step_color) ?> text-xs font-black uppercase rounded-xl shadow hover:opacity-90 transition-all">Lanjutkan Alur</a>
+                    <?php else: ?>
+                        <div class="w-full md:w-auto px-6 py-3 text-center bg-white/20 border border-white/30 text-white text-xs font-black uppercase rounded-xl">
+                            ℹ️ Tahap selanjutnya menunggu proses <?= $next_step_role_name ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
