@@ -128,8 +128,8 @@ $step_mapping = ['Catatan_Batch', 'Uji_Lab', 'Diagnosis_Mesin', 'Laporan_Perbaik
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <div>
-                            <label>Tanggal Laporan</label>
-                            <input type="date" name="tanggal" value="<?= htmlspecialchars($doc['tanggal']) ?>" required>
+                            <label>Tanggal Pelaporan</label>
+                            <input type="date" name="tanggal" value="<?= htmlspecialchars($doc['tanggal']) ?>" max="<?= date('Y-m-d') ?>" required>
                         </div>
                         <div>
                             <label>Lini Produk</label>

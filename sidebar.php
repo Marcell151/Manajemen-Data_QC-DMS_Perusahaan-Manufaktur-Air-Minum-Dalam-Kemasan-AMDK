@@ -14,6 +14,25 @@ $role_name_map = [
 $role_name = $role_name_map[$_SESSION['role']] ?? 'User';
 $is_technician = ($_SESSION['role'] == 'Pekerja_Lapangan');
 
+// --- SMART COUNTER BADGES LOGIC ---
+$pending_counts = [
+    'step1' => 0, 'step2' => 0, 'step3' => 0, 'step4' => 0, 'step5' => 0, 'step6' => 0, 'waiting' => 0
+];
+
+if (isset($pdo)) {
+    if ($_SESSION['role'] == 'Manager') {
+        $pending_counts['waiting'] = $pdo->query("SELECT COUNT(*) FROM documents WHERE approval_status = 'Waiting Approval'")->fetchColumn();
+        $pending_counts['step6'] = $pdo->query("SELECT COUNT(*) FROM documents d1 WHERE d1.jenis IN ('Uji_Lab', 'Uji_Ulang') AND d1.status_mutu IN ('Passed', 'Lolos') AND d1.status != 'Archived' AND NOT EXISTS (SELECT 1 FROM documents d2 WHERE d2.parent_doc_id = d1.id AND d2.jenis = 'Approval_Manager')")->fetchColumn();
+    } elseif ($_SESSION['role'] == 'Admin_Entry') {
+        $pending_counts['step2'] = $pdo->query("SELECT COUNT(*) FROM documents d1 WHERE d1.jenis = 'Catatan_Batch' AND d1.status != 'Archived' AND NOT EXISTS (SELECT 1 FROM documents d2 WHERE d2.parent_doc_id = d1.id AND d2.jenis = 'Uji_Lab')")->fetchColumn();
+        $pending_counts['step5'] = $pdo->query("SELECT COUNT(*) FROM documents d1 WHERE d1.jenis = 'Laporan_Perbaikan' AND d1.status != 'Archived' AND NOT EXISTS (SELECT 1 FROM documents d2 WHERE d2.parent_doc_id = d1.id AND d2.jenis = 'Uji_Ulang')")->fetchColumn();
+    } elseif ($_SESSION['role'] == 'Pekerja_Lapangan') {
+        $pending_counts['step3'] = $pdo->query("SELECT COUNT(*) FROM documents d1 WHERE d1.jenis = 'Uji_Lab' AND d1.status_mutu = 'Reject' AND d1.status != 'Archived' AND NOT EXISTS (SELECT 1 FROM documents d2 WHERE d2.parent_doc_id = d1.id AND d2.jenis = 'Diagnosis_Mesin')")->fetchColumn();
+        $pending_counts['step4'] = $pdo->query("SELECT COUNT(*) FROM documents d1 WHERE d1.jenis = 'Diagnosis_Mesin' AND d1.approval_status = 'Approved' AND d1.status != 'Archived' AND NOT EXISTS (SELECT 1 FROM documents d2 WHERE d2.parent_doc_id = d1.id AND d2.jenis = 'Laporan_Perbaikan')")->fetchColumn();
+    }
+}
+// ----------------------------------
+
 // Inisialisasi variabel mobile filter untuk mencegah warning undefined
 $mob_filter = $_GET['filter'] ?? '';
 
@@ -222,6 +241,9 @@ $steps_config = [
                     <?= $mv['svg'] ?>
                 </svg>
                 <span class="font-bold text-sm"><?= $mv['title'] ?></span>
+                <?php if ($pending_counts[$mk] > 0): ?>
+                    <span class="bg-rose-500 text-white rounded-full px-2 py-0.5 text-[10px] font-black ml-auto shadow-sm shadow-rose-500/30"><?= $pending_counts[$mk] ?></span>
+                <?php endif; ?>
             </a>
             <?php if ($mob_can_add): ?>
             <a href="add.php?step=<?= $mob_step_num ?>" onclick="toggleMobileSidebar()" class="w-10 h-10 flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl font-black text-lg transition-all flex-shrink-0 border border-sky-100">+</a>
@@ -236,6 +258,9 @@ $steps_config = [
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
             </svg>
             <span class="font-bold text-sm">Butuh Approval</span>
+            <?php if ($pending_counts['waiting'] > 0): ?>
+                <span class="bg-rose-500 text-white rounded-full px-2 py-0.5 text-[10px] font-black ml-auto shadow-sm shadow-rose-500/30"><?= $pending_counts['waiting'] ?></span>
+            <?php endif; ?>
         </a>
         <?php endif; ?>
 
@@ -268,25 +293,18 @@ $steps_config = [
             </svg>
             <span class="font-bold text-sm">Riwayat Arsip</span>
         </a>
+        <a href="documentation.php" onclick="toggleMobileSidebar()" class="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl mb-2 <?= ($current_page == 'documentation.php') ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-700' ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            <span class="font-bold text-sm">Dokumen Teknikal</span>
+        </a>
     </nav>
 
-    <!-- Role Switcher -->
-    <div class="p-3 border-t border-slate-100">
-        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 text-center">Role Simulator</p>
-        <div class="grid grid-cols-3 gap-1.5">
-            <a href="?switch_role=Pekerja_Lapangan" class="py-1.5 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-amber-600 text-white shadow shadow-amber-600/20' : 'bg-slate-50 text-slate-700 hover:bg-amber-50' ?>">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
-                <span>Teknisi</span>
-            </a>
-            <a href="?switch_role=Admin_Entry" class="py-1.5 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white shadow shadow-sky-600/20' : 'bg-slate-50 text-slate-700 hover:bg-sky-50' ?>">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                <span>Admin QC</span>
-            </a>
-            <a href="?switch_role=Manager" class="py-1.5 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white shadow shadow-rose-600/20' : 'bg-slate-50 text-slate-700 hover:bg-rose-50' ?>">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                <span>Manajer</span>
-            </a>
-        </div>
+    <!-- Logout Button -->
+    <div class="p-4 border-t border-slate-100 mt-auto">
+        <a href="logout.php" onclick="return confirm('Keluar dari aplikasi?')" class="flex items-center justify-center gap-2 w-full py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-bold transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            Logout
+        </a>
     </div>
 </div>
 
@@ -335,6 +353,9 @@ $steps_config = [
                            class="flex-grow flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 <?= $is_active ? 'bg-sky-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-sky-600' ?>">
                             <span class="text-[10px] font-black px-1.5 py-0.5 rounded <?= $is_active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600' ?>"><?= $val['num'] ?></span>
                             <span class="font-bold text-xs uppercase tracking-tight"><?= $val['title'] ?></span>
+                            <?php if ($pending_counts[$key] > 0): ?>
+                                <span class="bg-rose-500 text-white rounded-full px-2 py-0.5 text-[10px] font-black ml-auto shadow-sm shadow-rose-500/30"><?= $pending_counts[$key] ?></span>
+                            <?php endif; ?>
                         </a>
                         <?php if ($can_add): ?>
                         <a href="add.php?step=<?= $step_num ?>" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-sky-600 font-bold transition-all text-lg rounded-lg hover:bg-slate-100" title="Input Baru">+</a>
@@ -352,6 +373,9 @@ $steps_config = [
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
                         <span class="font-bold text-xs uppercase tracking-wide">Butuh Approval</span>
+                        <?php if ($pending_counts['waiting'] > 0): ?>
+                            <span class="bg-rose-500 text-white rounded-full px-2 py-0.5 text-[10px] font-black ml-auto shadow-sm shadow-rose-500/30"><?= $pending_counts['waiting'] ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <?php endif; ?>
@@ -397,28 +421,21 @@ $steps_config = [
                         <span class="font-bold text-xs uppercase tracking-wide">Riwayat Arsip</span>
                     </a>
                 </li>
+                <li>
+                    <a href="documentation.php" 
+                       class="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 <?= $current_page == 'documentation.php' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700' ?>">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        <span class="font-bold text-xs uppercase tracking-wide">Dokumen Teknikal</span>
+                    </a>
+                </li>
             </ul>
 
-            <!-- Role Switcher (Desktop Enhanced) -->
-            <div class="p-3 bg-slate-50 border border-slate-100 mt-6 rounded-xl">
-                <p class="text-[10px] font-black text-slate-500 uppercase mb-2 text-center tracking-widest">Role Simulator</p>
-                <div class="flex flex-col gap-1.5">
-                    <a href="?switch_role=Pekerja_Lapangan" 
-                       class="flex items-center justify-start px-3 gap-2 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Pekerja_Lapangan' ? 'bg-amber-600 text-white border-amber-700 shadow-amber-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-amber-700 hover:bg-amber-50' ?>">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
-                       TEKNISI
-                    </a>
-                    <a href="?switch_role=Admin_Entry" 
-                       class="flex items-center justify-start px-3 gap-2 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Admin_Entry' ? 'bg-sky-600 text-white border-sky-700 shadow-sky-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-sky-700 hover:bg-sky-50' ?>">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                       ADMIN QC
-                    </a>
-                    <a href="?switch_role=Manager" 
-                       class="flex items-center justify-start px-3 gap-2 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm border <?= $_SESSION['role'] == 'Manager' ? 'bg-rose-600 text-white border-rose-700 shadow-rose-600/10' : 'bg-white text-slate-700 border-slate-200 hover:text-rose-700 hover:bg-rose-50' ?>">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                       MANAJER
-                    </a>
-                </div>
+            <!-- Logout Button (Desktop) -->
+            <div class="mt-8 mb-4">
+                <a href="logout.php" onclick="return confirm('Keluar dari aplikasi?')" class="flex items-center justify-center gap-2 w-full py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-bold transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </a>
             </div>
         </nav>
     </div>
@@ -432,6 +449,7 @@ $steps_config = [
                     <?php 
                         if($current_page == 'index.php') echo "File & Report Manager";
                         elseif($current_page == 'add.php') echo "Upload Quality Control";
+                        elseif($current_page == 'documentation.php') echo "Technical Documentation";
                         else echo "Quality Analysis Detail";
                     ?>
                 </h2>

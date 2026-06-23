@@ -1,22 +1,12 @@
 <?php
 session_start();
 
-// Logic Switch Role Global (Mencegah error pada halaman detail)
-if (isset($_GET['switch_role'])) {
-    $_SESSION['role'] = $_GET['switch_role'];
-    
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $params = $_GET;
-    unset($params['switch_role']);
-    $queryString = http_build_query($params);
-    
-    $redirectUrl = $current_page . ($queryString ? '?' . $queryString : '');
-    header("Location: " . $redirectUrl);
-    exit;
-}
+$current_page = basename($_SERVER['PHP_SELF']);
 
-if (!isset($_SESSION['role'])) {
-    $_SESSION['role'] = 'Pekerja_Lapangan'; // Role simulasi default: Pekerja Lapangan
+// Redirect ke login.php jika belum login
+if (!isset($_SESSION['user_id']) && $current_page !== 'login.php' && $current_page !== 'logout.php') {
+    header("Location: login.php");
+    exit;
 }
 
 // Tentukan path file SQLite
@@ -38,6 +28,23 @@ try {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama_inspector TEXT UNIQUE
     )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        role TEXT,
+        nama_lengkap TEXT
+    )");
+
+    $countUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    if ($countUsers == 0) {
+        $hash = password_hash('123456', PASSWORD_DEFAULT);
+        $pdo->exec("INSERT INTO users (username, password, role, nama_lengkap) VALUES 
+            ('manajer', '$hash', 'Manager', 'Manager Produksi'),
+            ('qc', '$hash', 'Admin_Entry', 'Admin QC'),
+            ('teknisi', '$hash', 'Pekerja_Lapangan', 'Teknisi Lapangan')");
+    }
 
     $query = "CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
